@@ -14,6 +14,14 @@ Gemini agents  ──► http://localhost:8787/v1beta/models/...    ──► ge
 
 API keys are **never in the code** — you add them on the setup page in your browser, they're verified with the provider, and stored only in a local `.env` file on your machine.
 
+## ⬇ Download & run (no coding needed)
+
+**Windows:** [**Download the app**](https://github.com/Shanusvm/sixvm-token-proxy/releases/latest/download/SixVM-Token-Proxy-win64.zip) → unzip → double-click **SixVM-Token-Proxy.exe**.
+
+The first run opens the setup page in your browser automatically — paste your API key and you're done. No Node.js, no install, no terminal. (Windows may show a SmartScreen warning the first time because the app is new/unsigned — click **More info → Run anyway**.)
+
+Prefer to run from source instead? See [Quick start](#quick-start) below.
+
 ## Features
 
 - **Drop-in** — same request/response shape as the Anthropic Messages API; streaming (SSE) passes straight through; all other `/v1/*` endpoints (`count_tokens`, `models`, …) are forwarded too, so SDKs pointed at the proxy via `ANTHROPIC_BASE_URL` just work

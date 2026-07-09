@@ -36,7 +36,7 @@ API keys are **never in the code** — you add them on the setup page in your br
 Requires **Node.js 18+**.
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/sixvm-token-proxy.git
+git clone https://github.com/Shanusvm/sixvm-token-proxy.git
 cd sixvm-token-proxy
 npm install
 npm start

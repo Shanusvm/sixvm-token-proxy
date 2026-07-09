@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup · SixVM Token Proxy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23D97757'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #FAF9F5; --card: #FFFFFF; --border: #E8E4D9; --ink: #26251F;
+    --muted: #7A776C; --accent: #D97757; --accent-dark: #BC5F42; --accent-soft: #F6E8E1;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--ink); }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 24px 80px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .logo .mark { color: var(--accent); font-size: 26px; }
+  h1 { font-family: var(--serif); font-size: 26px; font-weight: 600; margin: 0; }
+  .lede { color: var(--muted); font-size: 14px; margin: 8px 0 26px; }
+  .chips { display: flex; gap: 8px; margin-bottom: 26px; flex-wrap: wrap; }
+  .chip { font-size: 12px; border-radius: 999px; padding: 5px 12px; border: 1px solid var(--border); background: var(--card); color: var(--muted); }
+  .chip.ok { background: #EBF1E7; border-color: #D3E0CB; color: #4E7A46; }
+  .chip.bad { background: #F9E9E7; border-color: #EACFCB; color: #A34A40; }
+
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; }
+  .step h2 { font-family: var(--serif); font-size: 17px; margin: 0 0 4px; }
+  .step .hint { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .step .hint a { color: var(--accent-dark); }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+  input {
+    width: 100%; padding: 10px 12px; font-size: 14px; font-family: var(--sans);
+    border: 1px solid var(--border); border-radius: 8px; background: #FDFDFB; color: var(--ink);
+  }
+  input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .optional { font-weight: 400; color: var(--muted); }
+
+  button.primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 12px 22px; font-size: 15px; cursor: pointer; margin-top: 8px;
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  .msg { margin-top: 14px; font-size: 14px; border-radius: 10px; padding: 12px 14px; display: none; }
+  .msg.ok { display: block; background: #EBF1E7; border: 1px solid #D3E0CB; color: #3E6238; }
+  .msg.err { display: block; background: #F9E9E7; border: 1px solid #EACFCB; color: #A34A40; }
+  .msg a { color: inherit; font-weight: 600; }
+
+  .schema { display: none; margin-top: 14px; }
+  .schema.show { display: block; }
+  .schema p { font-size: 13px; color: var(--muted); }
+  .schema pre {
+    background: #26251F; color: #E8E4D9; font-size: 12px; padding: 14px;
+    border-radius: 10px; overflow-x: auto; max-height: 260px;
+  }
+  button.ghost {
+    background: transparent; color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent-dark); }
+  .back { font-size: 13px; margin-top: 20px; }
+  .back a { color: var(--accent-dark); }
+</style>
+</head>
+<body>
+<main>
+  <div class="logo"><span class="mark">✳</span><h1>SixVM Token Proxy · Setup</h1></div>
+  <p class="lede">Two steps and you're running. Keys are stored only in the local <code>.env</code> file on this machine · never sent anywhere else. New here? <a href="/help" style="color:var(--accent-dark)">Read the 5-minute guide</a>.</p>
+
+  <div class="chips">
+    <span class="chip" id="chip-anthropic">Claude: checking…</span>
+    <span class="chip" id="chip-openai">ChatGPT: checking…</span>
+    <span class="chip" id="chip-gemini">Gemini: checking…</span>
+    <span class="chip" id="chip-supabase">Local database: checking…</span>
+  </div>
+
+  <div class="step">
+    <h2>1 · Anthropic (Claude) API key</h2>
+    <p class="hint">Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com → API keys</a>. Every key is verified with its provider before saving (no tokens are used). Keys are stored only on this machine.</p>
+    <label>API key</label>
+    <input type="password" id="anthropicKey" placeholder="sk-ant-… (leave empty to keep the current key)" autocomplete="off">
+  </div>
+
+  <div class="step">
+    <h2>2 · OpenAI &amp; Gemini keys <span class="optional">(optional · add the providers your agents use)</span></h2>
+    <p class="hint">Agents point at this proxy for each provider: OpenAI via <code>OPENAI_BASE_URL</code>, Gemini via the SDK's endpoint setting. Usage from all providers lands on the same dashboard.</p>
+    <label>OpenAI (ChatGPT) API key</label>
+    <input type="password" id="openaiKey" placeholder="sk-… from platform.openai.com/api-keys (empty = keep current)" autocomplete="off">
+    <label>Google Gemini API key</label>
+    <input type="password" id="geminiKey" placeholder="AIza… from aistudio.google.com/apikey (empty = keep current)" autocomplete="off">
+  </div>
+
+  <div class="step">
+    <h2>3 · Your usage database <span class="optional">(optional · your own free Supabase)</span></h2>
+    <p class="hint">Without this, usage is stored in a local file next to the proxy · zero setup, works fine. Connect <b>your own</b> free <a href="https://supabase.com" target="_blank">Supabase</a> project if you want your data in the cloud: it survives reinstalls and you can query it from anywhere. Your data goes only to <b>your</b> project · nobody else can see it.</p>
+    <p class="hint"><b>How to set it up (about 5 minutes, free):</b><br>
+      1 · Create an account at <a href="https://supabase.com" target="_blank">supabase.com</a> and click <b>New project</b> (any name, the free plan is enough)<br>
+      2 · Wait a minute for it to provision, then open <b>Project Settings → API keys</b><br>
+      3 · Copy the <b>Project URL</b> and the <b>service_role</b> secret key into the boxes below<br>
+      4 · Click <b>Test &amp; Save</b> · the SQL to create the table appears below: copy it, paste into Supabase's <b>SQL Editor</b> (left menu → SQL Editor → New query), press <b>Run</b> once, then click Test &amp; Save again</p>
+    <label>Project URL</label>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxx.supabase.co (empty = keep local file storage)" autocomplete="off">
+    <label>service_role key</label>
+    <input type="password" id="supabaseKey" placeholder="eyJ… or sb_secret_… (empty = keep current)" autocomplete="off">
+
+    <div class="schema" id="schema-block">
+      <p><b>One more step:</b> run this SQL once in your Supabase <b>SQL Editor</b>, then click Test &amp; Save again:</p>
+      <button class="ghost" id="copy-sql" type="button">Copy SQL</button>
+      <pre id="sql-text">create table if not exists token_usage (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  client text,
+  task_type text,
+  model text,
+  input_tokens int,
+  output_tokens int,
+  cache_read_tokens int,
+  cache_write_tokens int,
+  cache_hit boolean default false,
+  est_cost numeric,
+  request_id text,
+  latency_ms int
+);
+
+create index if not exists token_usage_created_at_idx on token_usage (created_at);
+create index if not exists token_usage_client_idx on token_usage (client);
+
+create or replace view token_usage_daily as
+select
+  date_trunc('day', created_at) as day,
+  client,
+  model,
+  count(*) as requests,
+  sum(input_tokens) as input_tokens,
+  sum(output_tokens) as output_tokens,
+  sum(cache_read_tokens) as cache_read_tokens,
+  sum(cache_write_tokens) as cache_write_tokens,
+  avg(est_cost) as avg_est_cost,
+  avg(latency_ms) as avg_latency_ms
+from token_usage
+group by 1, 2, 3;</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <h2>4 · Optimizations &amp; limits <span class="optional">(applies instantly, no restart)</span></h2>
+    <p class="hint">Automatic money-savers and safety limits. Stored locally in <code>config.json</code>.</p>
+
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="autoCache" style="width:auto"> Automatic prompt caching
+    </label>
+    <p class="hint">Adds Anthropic's cache marker to large system prompts (5,000+ characters), so repeated prompt content is billed at ~10% of the normal price. Requests are otherwise unchanged.</p>
+
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="respCache" style="width:auto"> Repeat-answer cache
+    </label>
+    <p class="hint">If the exact same request arrives again, the proxy answers from memory · <b>zero tokens spent</b>. Answers can be up to the cache age old, so keep it off for time-sensitive agents.</p>
+    <label>Cache age (minutes)</label>
+    <input type="number" id="respTtl" min="1" placeholder="60">
+
+    <label>Default monthly budget per client (USD) <span class="optional">· empty = no limit</span></label>
+    <input type="number" id="budgetDefault" min="0" step="0.01" placeholder="e.g. 25">
+    <label>Per-client budgets <span class="optional">· one per line: name: dollars</span></label>
+    <textarea id="budgetList" rows="3" placeholder="booking-bot: 20&#10;email-agent: 5"
+      style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)"></textarea>
+    <p class="hint">A client that reaches its monthly budget gets a clear "budget exceeded" error instead of silently spending more.</p>
+
+    <label>Alert webhook URL <span class="optional">(Discord or Slack · optional)</span></label>
+    <input type="text" id="alertUrl" placeholder="https://discord.com/api/webhooks/…" autocomplete="off">
+    <label>Alert when daily spend reaches (USD) <span class="optional">· 0 = off</span></label>
+    <input type="number" id="alertDaily" min="0" step="0.01" placeholder="e.g. 5">
+    <p class="hint">You get a message when the day's total spend crosses this line, and whenever a client hits its budget.</p>
+
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+      <input type="checkbox" id="weeklyReport" style="width:auto"> Weekly report · post a 7-day summary to the webhook every Monday morning
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="captureEnabled" style="width:auto"> Request explorer · keep the last 100 prompts &amp; answers in memory
+    </label>
+    <p class="hint">With the explorer on, click any row on the dashboard to see the exact prompt and answer. Kept in memory on this machine only · never written to disk, never reported anywhere.</p>
+  </div>
+
+  <div class="step">
+    <h2>5 · Advanced token savers <span class="optional">(per task tag)</span></h2>
+    <p class="hint">These act on the <code>x-sixvm-task</code> tag your agents send. Leave empty to change nothing.</p>
+
+    <label>Model routing <span class="optional">· one per line: task: model</span></label>
+    <textarea id="routingList" rows="3" placeholder="summarize: claude-haiku-4-5&#10;classify: claude-haiku-4-5"
+      style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)"></textarea>
+    <p class="hint">Send simple tasks to a cheaper model automatically. Haiku (<code>claude-haiku-4-5</code>) is 5× cheaper than Sonnet and 25× cheaper than Fable-class models. Use <code>*</code> as the task to route everything.</p>
+
+    <label>Max output tokens per request <span class="optional">· 0 = off</span></label>
+    <input type="number" id="maxOut" min="0" placeholder="e.g. 2048">
+    <p class="hint">Output tokens cost 5× more than input. This caps what any single request may ask for.</p>
+
+    <label>Effort per task <span class="optional">· one per line: task: low | medium | high</span></label>
+    <textarea id="effortList" rows="3" placeholder="summarize: low&#10;report: medium"
+      style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)"></textarea>
+    <p class="hint">Lower effort = the model thinks and writes less, sharply cutting tokens on routine work. Applied only on models that support it, and only when the agent didn't set an effort itself.</p>
+  </div>
+
+  <div class="step">
+    <h2>6 · Auto-router <span class="optional">(picks the model automatically)</span></h2>
+    <p class="hint">The proxy judges each request's difficulty and picks the cheapest model that can handle it: simple → Haiku, medium → Sonnet, hard → whatever was requested. It never switches model mid-conversation (that would forfeit the cache discount) and manual routing rules from section 5 always win.</p>
+    <label>Mode</label>
+    <select id="routerMode" style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)">
+      <option value="off">Off</option>
+      <option value="rules">Rules only · instant, free</option>
+      <option value="smart">Smart · rules + AI judge for unclear cases (~$0.0001 per judgement)</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+      <input type="checkbox" id="routerUpgrade" style="width:auto"> Allow upgrades · hard tasks may go to a <i>bigger</i> model than requested (can increase cost)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="routerCascade" style="width:auto"> Cascade · if a routed-down answer is weak (refusal/empty), retry once on the requested model
+    </label>
+  </div>
+
+  <div class="step">
+    <h2>7 · Reliability <span class="optional">(retries &amp; backup model)</span></h2>
+    <p class="hint">When a provider is overloaded or rate-limits, the proxy retries automatically with short waits before giving up · your agents never see the hiccup.</p>
+    <label>Retries per request (0–5)</label>
+    <input type="number" id="relRetries" min="0" max="5" placeholder="2">
+    <label>Backup model <span class="optional">· answers text-only requests when Claude still fails after retries</span></label>
+    <select id="relFailover" style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)">
+      <option value="">Off · pass the error through</option>
+      <option value="gpt-4o-mini">ChatGPT · 4o-mini (needs OpenAI key)</option>
+      <option value="gpt-4o">ChatGPT · 4o (needs OpenAI key)</option>
+      <option value="gemini-2.5-flash">Gemini · Flash (needs Gemini key)</option>
+      <option value="gemini-2.5-pro">Gemini · Pro (needs Gemini key)</option>
+    </select>
+    <p class="hint">Failover answers arrive in Claude's response format, so agents keep working without changes. Requests with tools or images are never failed over.</p>
+  </div>
+
+  <button class="primary" id="save-btn">Test &amp; Save</button>
+  <div class="msg" id="msg"></div>
+
+  <p class="back"><a href="/dashboard">← Back to dashboard</a></p>
+</main>
+
+<script>
+async function loadStatus() {
+  try {
+    const s = await (await fetch("/setup/status")).json();
+    setChip("chip-anthropic", s.anthropic, "Claude");
+    setChip("chip-openai", s.openai, "ChatGPT");
+    setChip("chip-gemini", s.gemini, "Gemini");
+    const dbChip = document.getElementById("chip-supabase");
+    if (s.storage === "supabase") {
+      dbChip.textContent = s.table ? "Database: your Supabase ✓" : "Database: Supabase connected · run the SQL below";
+      dbChip.className = "chip " + (s.table ? "ok" : "bad");
+      if (!s.table) document.getElementById("schema-block").classList.add("show");
+    } else if (s.logging) {
+      dbChip.textContent = "Database: local file ✓ (own Supabase optional)";
+      dbChip.className = "chip ok";
+    } else {
+      dbChip.textContent = "Database: unavailable (Node 22.5+ needed)";
+      dbChip.className = "chip bad";
+    }
+  } catch {
+    document.getElementById("chip-anthropic").textContent = "status unavailable";
+  }
+}
+
+async function loadCfg() {
+  try {
+    const c = await (await fetch("/setup/config")).json();
+    document.getElementById("autoCache").checked = !!c.autoCache;
+    document.getElementById("respCache").checked = !!c.responseCache?.enabled;
+    document.getElementById("respTtl").value = Math.round((c.responseCache?.ttlSeconds ?? 3600) / 60);
+    const budgets = c.budgets ?? {};
+    if (budgets["*"]?.monthlyUsd) document.getElementById("budgetDefault").value = budgets["*"].monthlyUsd;
+    document.getElementById("budgetList").value = Object.entries(budgets)
+      .filter(([k]) => k !== "*")
+      .map(([k, v]) => k + ": " + v.monthlyUsd)
+      .join("\n");
+    document.getElementById("alertUrl").value = c.alerts?.webhookUrl ?? "";
+    document.getElementById("alertDaily").value = c.alerts?.dailyUsdThreshold || "";
+    document.getElementById("routingList").value = Object.entries(c.routing ?? {})
+      .map(([k, v]) => k + ": " + v).join("\n");
+    document.getElementById("maxOut").value = c.limits?.maxOutputTokens || "";
+    document.getElementById("effortList").value = Object.entries(c.limits?.taskEffort ?? {})
+      .map(([k, v]) => k + ": " + v).join("\n");
+    document.getElementById("routerMode").value = c.autoRouter?.mode ?? "off";
+    document.getElementById("routerUpgrade").checked = !!c.autoRouter?.allowUpgrade;
+    document.getElementById("routerCascade").checked = !!c.autoRouter?.cascade;
+    document.getElementById("relRetries").value = c.reliability?.retries ?? 2;
+    document.getElementById("relFailover").value = c.reliability?.failoverModel ?? "";
+    document.getElementById("weeklyReport").checked = c.alerts?.weeklyReport !== false;
+    document.getElementById("captureEnabled").checked = !!c.capture?.enabled;
+  } catch { /* config endpoint unavailable · leave form blank */ }
+}
+
+function parseLines(id) {
+  const out = {};
+  for (const line of document.getElementById(id).value.split("\n")) {
+    const i = line.indexOf(":");
+    if (i < 1) continue;
+    const key = line.slice(0, i).trim();
+    const val = line.slice(i + 1).trim();
+    if (key && val) out[key] = val;
+  }
+  return out;
+}
+
+function collectCfg() {
+  const budgets = {};
+  const def = Number(document.getElementById("budgetDefault").value);
+  if (def > 0) budgets["*"] = { monthlyUsd: def };
+  for (const line of document.getElementById("budgetList").value.split("\n")) {
+    const i = line.indexOf(":");
+    if (i < 1) continue;
+    const name = line.slice(0, i).trim();
+    const usd = Number(line.slice(i + 1).trim());
+    if (name && usd > 0) budgets[name] = { monthlyUsd: usd };
+  }
+  return {
+    autoCache: document.getElementById("autoCache").checked,
+    responseCache: {
+      enabled: document.getElementById("respCache").checked,
+      ttlSeconds: Math.max(1, Number(document.getElementById("respTtl").value) || 60) * 60,
+    },
+    budgets,
+    alerts: {
+      webhookUrl: document.getElementById("alertUrl").value.trim(),
+      dailyUsdThreshold: Number(document.getElementById("alertDaily").value) || 0,
+      weeklyReport: document.getElementById("weeklyReport").checked,
+    },
+    capture: { enabled: document.getElementById("captureEnabled").checked },
+    routing: parseLines("routingList"),
+    limits: {
+      maxOutputTokens: Number(document.getElementById("maxOut").value) || 0,
+      taskEffort: parseLines("effortList"),
+    },
+    autoRouter: {
+      mode: document.getElementById("routerMode").value,
+      allowUpgrade: document.getElementById("routerUpgrade").checked,
+      cascade: document.getElementById("routerCascade").checked,
+    },
+    reliability: {
+      retries: Number(document.getElementById("relRetries").value) || 0,
+      failoverModel: document.getElementById("relFailover").value,
+    },
+  };
+}
+
+function setChip(id, ok, label) {
+  const el = document.getElementById(id);
+  el.textContent = label + ": " + (ok ? "configured ✓" : "not set");
+  el.className = "chip " + (ok ? "ok" : "bad");
+}
+
+document.getElementById("save-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("save-btn");
+  const msg = document.getElementById("msg");
+  btn.disabled = true;
+  msg.className = "msg";
+  try {
+    const r = await fetch("/setup/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        anthropicKey: document.getElementById("anthropicKey").value.trim(),
+        openaiKey: document.getElementById("openaiKey").value.trim(),
+        geminiKey: document.getElementById("geminiKey").value.trim(),
+        supabaseUrl: document.getElementById("supabaseUrl").value.trim(),
+        supabaseKey: document.getElementById("supabaseKey").value.trim(),
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "HTTP " + r.status);
+
+    // Save the feature settings too (independent of key validation).
+    await fetch("/setup/config", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(collectCfg()),
+    });
+
+    if (!data.ok) {
+      msg.className = "msg err";
+      msg.textContent = data.message;
+    } else if (data.tableMissing) {
+      msg.className = "msg ok";
+      msg.textContent = "Saved! Supabase connection works · now run the SQL below in your Supabase SQL Editor to create the table, then click Test & Save again.";
+      document.getElementById("schema-block").classList.add("show");
+    } else {
+      msg.className = "msg ok";
+      msg.innerHTML = 'All saved and verified · you\'re ready. <a href="/dashboard">Open the dashboard →</a>';
+    }
+    loadStatus();
+  } catch (e) {
+    msg.className = "msg err";
+    msg.textContent = "Error: " + e.message;
+  }
+  btn.disabled = false;
+});
+
+document.getElementById("copy-sql").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(document.getElementById("sql-text").textContent);
+  document.getElementById("copy-sql").textContent = "Copied ✓";
+  setTimeout(() => (document.getElementById("copy-sql").textContent = "Copy SQL"), 2000);
+});
+
+loadStatus();
+loadCfg();
+</script>
+</body>
+</html>

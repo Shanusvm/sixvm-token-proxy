@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SixVM Token Proxy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23D97757'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #FAF9F5;
+    --card: #FFFFFF;
+    --border: #E8E4D9;
+    --ink: #26251F;
+    --muted: #7A776C;
+    --accent: #D97757;
+    --accent-dark: #BC5F42;
+    --accent-soft: #F6E8E1;
+    --good: #4E7A46;
+    --shadow: 0 1px 2px rgba(38,37,31,.05), 0 4px 14px rgba(38,37,31,.04);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--ink); }
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto 0; height: 240px; pointer-events: none; z-index: 0;
+    background: linear-gradient(180deg, rgba(217,119,87,.06), rgba(217,119,87,0));
+  }
+
+  header {
+    background: rgba(250,249,245,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    color: var(--accent); font-size: 18px; background: var(--accent-soft);
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  h1 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; }
+  header .spacer { flex: 1; }
+
+  button.primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 9px 18px; font-size: 14px; font-weight: 600; font-family: var(--sans); cursor: pointer;
+    box-shadow: 0 2px 6px rgba(217,119,87,.3);
+    transition: background .15s, transform .1s;
+  }
+  button.primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+  button.primary:disabled { opacity: .5; cursor: wait; transform: none; }
+  button.ghost {
+    background: transparent; color: var(--ink); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    transition: all .15s;
+  }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); }
+  #test-result { font-size: 13px; color: var(--muted); max-width: 340px; font-style: italic; }
+
+  main { max-width: 1260px; margin: 0 auto; padding: 26px 28px 60px; position: relative; z-index: 1; }
+
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .segmented { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .segmented button {
+    background: transparent; border: none; padding: 9px 18px; font-size: 13px;
+    color: var(--muted); cursor: pointer; font-family: var(--sans); transition: all .15s;
+  }
+  .segmented button:hover { color: var(--accent-dark); }
+  .segmented button.active { background: var(--accent); color: #fff; font-weight: 600; }
+  select {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 13px; color: var(--ink); font-family: var(--sans); cursor: pointer;
+  }
+  select:hover { border-color: var(--accent); }
+  .toolbar .spacer { flex: 1; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .cards.hero { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 1000px) {
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards.hero { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(38,37,31,.08); }
+  .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .value { font-family: var(--serif); font-size: 21px; font-weight: 600; margin-top: 7px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cards.hero .card .value { font-size: 33px; }
+  .card .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .skel {
+    display: inline-block; width: 84px; height: 22px; border-radius: 8px; vertical-align: middle;
+    background: linear-gradient(90deg, #EFEDE5 25%, #F8F6EF 50%, #EFEDE5 75%);
+    background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite;
+  }
+  .cards.hero .skel { width: 120px; height: 30px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .card.accent { background: linear-gradient(135deg, #F6E8E1, #FBF3EC); border-color: #EBD5C9; }
+  .card.accent .value { color: var(--accent-dark); }
+
+  .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .chart-card h2 { margin: 0 0 14px; }
+  .chart-wrap { position: relative; height: 260px; }
+  .chart-empty {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; font-style: italic;
+  }
+  @keyframes rowflash { from { background: var(--accent-soft); } to { background: transparent; } }
+  tr.flash td { animation: rowflash 2s ease-out; }
+
+  h2 { font-family: var(--serif); font-size: 17px; font-weight: 600; margin: 30px 0 12px; letter-spacing: -0.1px; }
+  h2 .caption { font-family: var(--sans); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 8px; }
+
+  .tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #F0EDE4; white-space: nowrap; }
+  th { background: #F3F0E8; font-weight: 600; color: #55524A; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  tbody tr:nth-child(even) { background: #FCFBF7; }
+  tbody tr:hover { background: var(--accent-soft); }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); padding: 18px; font-size: 13px; }
+  .tag {
+    display: inline-block; background: var(--accent-soft); color: var(--accent-dark);
+    border-radius: 999px; padding: 2px 10px; font-size: 12px;
+  }
+  .tag.gray { background: #EFEDE5; color: #6B685E; }
+  .banner {
+    background: #FBEFD9; border: 1px solid #E8D5AE; color: #7A5C1E;
+    border-radius: 12px; padding: 12px 16px; font-size: 13px; margin-bottom: 16px;
+  }
+  .fpills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .fpill {
+    font-size: 12px; border: 1px solid var(--border); background: var(--card);
+    border-radius: 999px; padding: 5px 13px; color: var(--muted); text-decoration: none;
+    transition: all .15s; box-shadow: var(--shadow);
+  }
+  .fpill:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .fpill b { color: #9A5A3C; font-weight: 600; }
+  .fpill.on b { color: var(--good); }
+  .banner a { color: var(--accent-dark); font-weight: 600; }
+  .card.good { background: linear-gradient(135deg, #EBF1E7, #F3F7F0); border-color: #D3E0CB; }
+  .card.good .value { color: var(--good); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark">✳</span><h1>SixVM Token Proxy</h1></div>
+  <span class="pill" id="status">loading…</span>
+  <span class="spacer"></span>
+  <span id="test-result"></span>
+  <button class="ghost" onclick="location.href='/compare'">⚖ Compare</button>
+  <button class="ghost" onclick="location.href='/doctor'">🩺 Doctor</button>
+  <button class="ghost" onclick="location.href='/help'">Help</button>
+  <button class="ghost" onclick="location.href='/setup'">⚙ Setup</button>
+  <select id="test-model" title="Which AI to test">
+    <option value="claude-haiku-4-5">Claude · Haiku</option>
+    <option value="claude-sonnet-4-6">Claude · Sonnet</option>
+    <option value="gpt-4o-mini">ChatGPT · 4o-mini</option>
+    <option value="gpt-4o">ChatGPT · 4o</option>
+    <option value="gemini-2.5-flash">Gemini · Flash</option>
+    <option value="gemini-2.5-pro">Gemini · Pro</option>
+  </select>
+  <button class="primary" id="test-btn">Send test</button>
+</header>
+
+<main>
+  <div id="setup-banner" class="banner" style="display:none">
+    ⚙ The proxy is not fully configured yet · <a href="/setup">finish setup here</a> (API key, usage database).
+  </div>
+
+  <div class="fpills" id="feature-pills"></div>
+
+  <div class="toolbar">
+    <div class="segmented" id="range">
+      <button data-range="today">Today</button>
+      <button data-range="7" class="active">7 days</button>
+      <button data-range="30">30 days</button>
+      <button data-range="all">All</button>
+    </div>
+    <select id="client-filter"><option value="all">All clients</option></select>
+    <input type="search" id="search" placeholder="🔎 Search requests…"
+      style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:var(--sans);width:210px">
+    <span class="spacer"></span>
+    <button class="ghost" id="csv-btn">Export CSV</button>
+  </div>
+
+  <div class="cards hero">
+    <div class="card accent"><div class="label">💰 Est. cost</div><div class="value" id="t-cost"><span class="skel"></span></div><div class="sub">what this range actually cost</div></div>
+    <div class="card good"><div class="label">✨ Saved</div><div class="value" id="t-saved"><span class="skel"></span></div><div class="sub" id="t-saved-sub">cache savings appear here</div></div>
+    <div class="card"><div class="label">📊 Requests</div><div class="value" id="t-req"><span class="skel"></span></div><div class="sub">across all AIs and agents</div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Input tokens</div><div class="value" id="t-in"><span class="skel"></span></div></div>
+    <div class="card"><div class="label">Output tokens</div><div class="value" id="t-out"><span class="skel"></span></div></div>
+    <div class="card"><div class="label">Cache read/write</div><div class="value" id="t-cache"><span class="skel"></span></div><div class="sub">reads bill at ~10%</div></div>
+    <div class="card"><div class="label">Avg latency</div><div class="value" id="t-lat"><span class="skel"></span></div></div>
+    <div class="card"><div class="label">Cache hit rate</div><div class="value" id="t-hitrate"><span class="skel"></span></div><div class="sub">prompt tokens from cache</div></div>
+    <div class="card good"><div class="label">Free answers</div><div class="value" id="t-free"><span class="skel"></span></div><div class="sub">repeat cache · $0 each</div></div>
+    <div class="card"><div class="label">Without proxy</div><div class="value" id="t-baseline"><span class="skel"></span></div><div class="sub">every token at full price</div></div>
+    <div class="card"><div class="label">Monthly budget <span id="budget-edit" style="cursor:pointer" title="Set monthly budget">✎</span></div><div class="value" id="t-budget"><span class="skel"></span></div><div class="sub" id="t-budget-sub">click ✎ to set</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h2>Cost per day</h2>
+      <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Cost by client</h2>
+      <div class="chart-wrap"><canvas id="chart-clients"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h2>Tokens per day</h2>
+      <div class="chart-wrap"><canvas id="chart-tokens"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Requests by task</h2>
+      <div class="chart-wrap"><canvas id="chart-tasks"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h2>Avg latency per day</h2>
+      <div class="chart-wrap"><canvas id="chart-latency"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Cost by model</h2>
+      <div class="chart-wrap"><canvas id="chart-models"></canvas></div>
+    </div>
+  </div>
+
+  <div id="router-section" style="display:none">
+    <h2>Auto-router activity <span style="font-family:var(--sans);font-size:12px;color:var(--muted)" id="router-mode"></span></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Client</th><th>Task</th><th>Requested</th><th></th><th>Routed to</th><th>Decided by</th>
+        </tr></thead>
+        <tbody id="router-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="errors-section" style="display:none">
+    <h2>Recent errors <span class="caption" id="errors-caption"></span></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Provider</th><th>Client</th><th>Task</th><th class="num">Status</th><th>Message</th>
+        </tr></thead>
+        <tbody id="errors-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2>Recent requests</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Time</th><th>Client</th><th>Task</th><th>Model</th>
+        <th class="num">In</th><th class="num">Out</th><th class="num">Cache R</th><th class="num">Cache W</th>
+        <th class="num">Est. cost</th><th class="num">Latency</th>
+      </tr></thead>
+      <tbody id="recent-body"><tr><td colspan="11" class="empty">loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>Daily rollup (per client / model)</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Day</th><th>Client</th><th>Model</th>
+        <th class="num">Requests</th><th class="num">In</th><th class="num">Out</th>
+        <th class="num">Avg cost</th><th class="num">Avg latency</th>
+      </tr></thead>
+      <tbody id="daily-body"><tr><td colspan="8" class="empty">loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="modal" style="display:none; position:fixed; inset:0; background:rgba(38,37,31,.45); z-index:50; align-items:center; justify-content:center; padding:20px">
+    <div style="background:var(--card); border-radius:16px; max-width:760px; width:100%; max-height:82vh; overflow:auto; padding:24px 26px; box-shadow:0 10px 40px rgba(0,0,0,.25)">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px">
+        <h2 id="modal-title" style="margin:0; flex:1"></h2>
+        <button class="ghost" onclick="document.getElementById('modal').style.display='none'">Close</button>
+      </div>
+      <div id="modal-body" style="font-size:13px"></div>
+    </div>
+  </div>
+
+  <footer style="margin-top:44px; padding-top:18px; border-top:1px solid var(--border); text-align:center; font-size:12.5px; color:var(--muted);">
+    ✳ SixVM Token Proxy · MIT license ·
+    <a href="/help" style="color:var(--accent-dark)">How it works</a> ·
+    <a href="/setup" style="color:var(--accent-dark)">Setup</a>
+  </footer>
+</main>
+
+<script>
+// Categorical palette · validated with the six-checks script (lightness band,
+// chroma floor, colorblind separation, contrast on white cards) · fixed order.
+const PALETTE = ["#D97757", "#3478C8", "#B8821F", "#8C5FA8", "#3AA45E", "#B0413E", "#00A39A"];
+const fmt = (n) => n == null ? "0" : Number(n).toLocaleString();
+const fmtShort = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+  if (v >= 10_000) return Math.round(v / 1000) + "k";
+  if (v >= 1_000) return (v / 1000).toFixed(1) + "k";
+  return v.toLocaleString();
+};
+const fmtCost = (n) => {
+  const v = Number(n) || 0;
+  if (v === 0) return "$0.00";
+  if (v >= 1) return "$" + v.toFixed(2);
+  if (v >= 0.01) return "$" + v.toFixed(4);
+  return "$" + v.toFixed(6);
+};
+const fmtMs = (n) => n == null ? "0 ms" : Math.round(Number(n)).toLocaleString() + " ms";
+const esc = (s) => String(s ?? "·").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let cache = { recent: [], daily: [] };
+let state = { range: "7", client: "all", q: "" };
+let chartDaily = null, chartClients = null, chartTokens = null, chartTasks = null, chartLatency = null, chartModels = null;
+
+// ---- Chart theme (matches the dashboard's cream/terracotta system) ----
+const INK = "#26251F", MUTED_C = "#7A776C", GRID = "#F0EDE4", SURFACE = "#FFFFFF";
+if (typeof Chart !== "undefined") {
+  Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+  Chart.defaults.font.size = 11.5;
+  Chart.defaults.color = MUTED_C;
+  Chart.defaults.borderColor = GRID;
+  // Center label inside doughnuts (total value + caption).
+  Chart.register({
+    id: "centerText",
+    afterDraw(chart) {
+      const t = chart.options.plugins?.centerText;
+      if (!t || !t.text || !chart.chartArea) return;
+      const { ctx, chartArea: a } = chart;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "600 19px Georgia, serif";
+      ctx.fillStyle = INK;
+      ctx.fillText(t.text, (a.left + a.right) / 2, (a.top + a.bottom) / 2 - 7);
+      if (t.sub) {
+        ctx.font = "11px 'Segoe UI', sans-serif";
+        ctx.fillStyle = MUTED_C;
+        ctx.fillText(t.sub, (a.left + a.right) / 2, (a.top + a.bottom) / 2 + 13);
+      }
+      ctx.restore();
+    },
+  });
+}
+
+const TOOLTIP = {
+  backgroundColor: "rgba(38,37,31,.94)",
+  titleColor: "#FAF9F5", bodyColor: "#E8E4D9", footerColor: "#C9C6BA",
+  padding: 12, cornerRadius: 10, boxPadding: 4,
+  titleFont: { family: "'Segoe UI', sans-serif", weight: "600" },
+};
+const LEGEND_BOTTOM = { position: "bottom", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 14 } };
+const Y_GRID = { grid: { color: GRID, drawTicks: false }, border: { display: false }, ticks: { padding: 8 } };
+const X_CLEAN = { grid: { display: false }, border: { display: false } };
+
+function upsert(chart, id, cfg) {
+  if (chart) {
+    chart.data = cfg.data;
+    chart.options = cfg.options;
+    chart.update();
+    return chart;
+  }
+  return new Chart(document.getElementById(id), cfg);
+}
+
+function setEmpty(canvasId, isEmpty) {
+  const wrap = document.getElementById(canvasId).parentElement;
+  let ov = wrap.querySelector(".chart-empty");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.className = "chart-empty";
+    ov.textContent = "no data in this range yet";
+    wrap.appendChild(ov);
+  }
+  ov.style.display = isEmpty ? "flex" : "none";
+  document.getElementById(canvasId).style.opacity = isEmpty ? 0.2 : 1;
+}
+
+function doughnutData(labels, values) {
+  return {
+    labels,
+    datasets: [{
+      data: values,
+      backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
+      borderColor: SURFACE, borderWidth: 2, hoverOffset: 6,
+    }],
+  };
+}
+
+function cutoffMs() {
+  const now = new Date();
+  if (state.range === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (state.range === "all") return 0;
+  return now.getTime() - Number(state.range) * 86400000;
+}
+
+function filtered() {
+  const cut = cutoffMs();
+  const cf = state.client;
+  const q = state.q.trim().toLowerCase();
+  return {
+    recent: cache.recent.filter((r) =>
+      new Date(r.created_at).getTime() >= cut
+      && (cf === "all" || r.client === cf)
+      && (!q || [r.client, r.task_type, r.model, r.request_id].some((f) => String(f ?? "").toLowerCase().includes(q)))),
+    daily: cache.daily.filter((d) =>
+      new Date(d.day).getTime() >= cut - 86400000 && (cf === "all" || d.client === cf)),
+  };
+}
+
+// Same prefix-matching lookup the server uses (pricing arrives with the data).
+function pricingFor(model) {
+  const P = cache.pricing ?? {};
+  if (!model) return null;
+  if (P[model]) return P[model];
+  const key = Object.keys(P).find((k) => model.startsWith(k));
+  return key ? P[key] : null;
+}
+
+function renderBudget() {
+  const budget = Number(localStorage.getItem("sixvm-budget") || 0);
+  const now = new Date();
+  let spend = 0;
+  for (const d of cache.daily) {
+    const dt = new Date(d.day);
+    if (dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear())
+      spend += (+d.avg_est_cost || 0) * +d.requests;
+  }
+  // Forecast: current pace projected to the end of the month.
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const forecast = (spend / Math.max(1, dayOfMonth)) * daysInMonth;
+
+  const v = document.getElementById("t-budget");
+  const sub = document.getElementById("t-budget-sub");
+  if (!budget) {
+    v.textContent = fmtCost(spend);
+    sub.textContent = spend > 0
+      ? "on pace for ≈ " + fmtCost(forecast) + " this month · ✎ to set a budget"
+      : "click ✎ to set a budget";
+    sub.style.color = "";
+    return;
+  }
+  const pct = (spend / budget) * 100;
+  v.textContent = fmtCost(spend) + " / $" + budget;
+  sub.textContent = pct.toFixed(1) + "% used · on pace for ≈ " + fmtCost(forecast);
+  sub.style.color = (pct >= 80 || forecast > budget) ? "#B0413E" : "";
+}
+
+function render() {
+  const { recent, daily } = filtered();
+
+  // Stat cards · derived from the daily rollup (avg * requests recovers sums).
+  let req = 0, tin = 0, tout = 0, cr = 0, cw = 0, cost = 0, latW = 0;
+  for (const d of daily) {
+    req += +d.requests;
+    tin += +(d.input_tokens ?? 0);
+    tout += +(d.output_tokens ?? 0);
+    cr += +(d.cache_read_tokens ?? 0);
+    cw += +(d.cache_write_tokens ?? 0);
+    cost += (+d.avg_est_cost || 0) * +d.requests;
+    latW += (+d.avg_latency_ms || 0) * +d.requests;
+  }
+  document.getElementById("t-req").textContent = fmt(req);
+  document.getElementById("t-in").textContent = fmtShort(tin);
+  document.getElementById("t-out").textContent = fmtShort(tout);
+  document.getElementById("t-cache").textContent = fmtShort(cr) + " / " + fmtShort(cw);
+  document.getElementById("t-hitrate").textContent = (tin + cr) > 0 ? ((cr / (tin + cr)) * 100).toFixed(0) + "%" : "0%";
+  document.getElementById("t-free").textContent = fmt(recent.filter((x) => x.cache_hit).length);
+  document.getElementById("t-cost").textContent = fmtCost(cost);
+  document.getElementById("t-lat").textContent = req ? fmtMs(latW / req) : "0 ms";
+
+  // "Without proxy" baseline: what the same tokens would cost if every one
+  // were billed at the full input/output rate (no cache discounts).
+  let baseline = 0;
+  for (const d of daily) {
+    const p = pricingFor(d.model);
+    if (!p) continue;
+    baseline += ((+(d.input_tokens ?? 0) + +(d.cache_read_tokens ?? 0) + +(d.cache_write_tokens ?? 0)) * p.input
+      + +(d.output_tokens ?? 0) * p.output) / 1_000_000;
+  }
+  const saved = Math.max(0, baseline - cost);
+  document.getElementById("t-baseline").textContent = fmtCost(baseline);
+  document.getElementById("t-saved").textContent = fmtCost(saved);
+  document.getElementById("t-saved-sub").textContent = baseline > 0 && saved > 0.0000005
+    ? ((saved / baseline) * 100).toFixed(1) + "% less than without the proxy"
+    : "cache savings appear here";
+  renderBudget();
+
+  // Recent table
+  document.getElementById("recent-body").innerHTML = recent.length
+    ? recent.map((x, i) => `<tr${flashNext && i === 0 ? ' class="flash"' : ""} data-rid="${esc(x.request_id ?? "")}" style="cursor:pointer" title="Click to inspect (needs Request explorer in Setup)">
+        <td>${x.id}</td>
+        <td>${new Date(x.created_at).toLocaleString()}</td>
+        <td><span class="tag">${esc(x.client)}</span></td>
+        <td><span class="tag gray">${esc(x.task_type)}</span></td>
+        <td>${esc(x.model)}${x.cache_hit ? ' <span class="tag" style="background:#EBF1E7;color:#4E7A46" title="Answered from the repeat cache · zero tokens spent">⚡ free</span>' : ""}</td>
+        <td class="num">${fmt(x.input_tokens)}</td>
+        <td class="num">${fmt(x.output_tokens)}</td>
+        <td class="num">${fmt(x.cache_read_tokens)}</td>
+        <td class="num">${fmt(x.cache_write_tokens)}</td>
+        <td class="num">${fmtCost(x.est_cost)}</td>
+        <td class="num">${fmtMs(x.latency_ms)}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="11" class="empty">no requests in this range · click “Send test request”</td></tr>';
+
+  // Daily rollup table
+  document.getElementById("daily-body").innerHTML = daily.length
+    ? daily.map((d) => `<tr>
+        <td>${new Date(d.day).toLocaleDateString()}</td>
+        <td><span class="tag">${esc(d.client)}</span></td>
+        <td>${esc(d.model)}</td>
+        <td class="num">${fmt(d.requests)}</td>
+        <td class="num">${fmt(d.input_tokens)}</td>
+        <td class="num">${fmt(d.output_tokens)}</td>
+        <td class="num">${fmtCost(d.avg_est_cost)}</td>
+        <td class="num">${fmtMs(d.avg_latency_ms)}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="8" class="empty">nothing in this range</td></tr>';
+
+  renderCharts(daily, recent);
+  flashNext = false;
+}
+
+function renderCharts(daily, recent) {
+  if (typeof Chart === "undefined") return; // CDN blocked/offline · tables still work
+
+  // Cost per day · single axis; request counts live in the tooltip footer
+  const byDay = new Map();
+  for (const d of daily) {
+    const k = new Date(d.day).toLocaleDateString();
+    const cur = byDay.get(k) ?? { cost: 0, req: 0 };
+    cur.cost += (+d.avg_est_cost || 0) * +d.requests;
+    cur.req += +d.requests;
+    byDay.set(k, cur);
+  }
+  const days = [...byDay.keys()].reverse();
+
+  const dailyCfg = {
+    type: "bar",
+    data: {
+      labels: days,
+      datasets: [{
+        label: "Est. cost",
+        data: days.map((k) => byDay.get(k).cost),
+        backgroundColor: PALETTE[0],
+        hoverBackgroundColor: "#BC5F42",
+        borderRadius: { topLeft: 4, topRight: 4 },
+        borderSkipped: "bottom",
+        maxBarThickness: 46,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: X_CLEAN,
+        y: { ...Y_GRID, beginAtZero: true, ticks: { ...Y_GRID.ticks, callback: (v) => fmtCost(v) } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TOOLTIP,
+          callbacks: {
+            label: (c) => " " + fmtCost(c.parsed.y),
+            footer: (items) => (byDay.get(items[0]?.label)?.req ?? 0) + " requests",
+          },
+        },
+      },
+    },
+  };
+  chartDaily = upsert(chartDaily, "chart-daily", dailyCfg);
+  setEmpty("chart-daily", !days.length);
+
+  // Cost by client (doughnut)
+  const byClient = new Map();
+  for (const d of daily) {
+    const k = d.client ?? "untagged";
+    byClient.set(k, (byClient.get(k) ?? 0) + (+d.avg_est_cost || 0) * +d.requests);
+  }
+  const clients = [...byClient.keys()];
+  const clientTotal = [...byClient.values()].reduce((a, b) => a + b, 0);
+  const clientCfg = {
+    type: "doughnut",
+    data: doughnutData(clients, clients.map((k) => byClient.get(k))),
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "64%",
+      plugins: {
+        legend: LEGEND_BOTTOM,
+        centerText: { text: fmtCost(clientTotal), sub: "total" },
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => " " + c.label + ": " + fmtCost(c.parsed) } },
+      },
+    },
+  };
+  chartClients = upsert(chartClients, "chart-clients", clientCfg);
+  setEmpty("chart-clients", !clients.length);
+
+  // Tokens per day (stacked bars: input / output / cache read / cache write)
+  const tokByDay = new Map();
+  for (const d of daily) {
+    const k = new Date(d.day).toLocaleDateString();
+    const cur = tokByDay.get(k) ?? { tin: 0, tout: 0, cr: 0, cw: 0 };
+    cur.tin += +(d.input_tokens ?? 0);
+    cur.tout += +(d.output_tokens ?? 0);
+    cur.cr += +(d.cache_read_tokens ?? 0);
+    cur.cw += +(d.cache_write_tokens ?? 0);
+    tokByDay.set(k, cur);
+  }
+  const tokDays = [...tokByDay.keys()].reverse();
+  const tokSeries = [["Input", "tin"], ["Output", "tout"], ["Cache read", "cr"], ["Cache write", "cw"]];
+  const tokensCfg = {
+    type: "bar",
+    data: {
+      labels: tokDays,
+      datasets: tokSeries.map(([label, key], i) => ({
+        label,
+        data: tokDays.map((k) => tokByDay.get(k)[key]),
+        backgroundColor: PALETTE[i],
+        borderColor: SURFACE, borderWidth: 1, borderRadius: 3, borderSkipped: false,
+        maxBarThickness: 46,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ...X_CLEAN, stacked: true },
+        y: { ...Y_GRID, stacked: true, beginAtZero: true, ticks: { ...Y_GRID.ticks, callback: (v) => fmtShort(v) } },
+      },
+      plugins: {
+        legend: LEGEND_BOTTOM,
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => " " + c.dataset.label + ": " + fmt(c.parsed.y) } },
+      },
+    },
+  };
+  chartTokens = upsert(chartTokens, "chart-tokens", tokensCfg);
+  setEmpty("chart-tokens", !tokDays.length);
+
+  // Requests by task (from the recent-request window)
+  const byTask = new Map();
+  for (const r of recent) {
+    const k = r.task_type ?? "untagged";
+    byTask.set(k, (byTask.get(k) ?? 0) + 1);
+  }
+  const tasks = [...byTask.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7);
+  const taskTotal = tasks.reduce((a, [, v]) => a + v, 0);
+  const tasksCfg = {
+    type: "doughnut",
+    data: doughnutData(tasks.map(([k]) => k), tasks.map(([, v]) => v)),
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "64%",
+      plugins: {
+        legend: LEGEND_BOTTOM,
+        centerText: { text: fmt(taskTotal), sub: "requests" },
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => " " + c.label + ": " + c.parsed + " requests" } },
+      },
+    },
+  };
+  chartTasks = upsert(chartTasks, "chart-tasks", tasksCfg);
+  setEmpty("chart-tasks", !tasks.length);
+
+  // Avg latency per day (request-weighted)
+  const latByDay = new Map();
+  for (const d of daily) {
+    const k = new Date(d.day).toLocaleDateString();
+    const cur = latByDay.get(k) ?? { w: 0, req: 0 };
+    cur.w += (+d.avg_latency_ms || 0) * +d.requests;
+    cur.req += +d.requests;
+    latByDay.set(k, cur);
+  }
+  const latDays = [...latByDay.keys()].reverse();
+  const latencyCfg = {
+    type: "line",
+    data: {
+      labels: latDays,
+      datasets: [{
+        label: "Avg latency",
+        data: latDays.map((k) => { const v = latByDay.get(k); return v.req ? Math.round(v.w / v.req) : 0; }),
+        borderColor: PALETTE[1], borderWidth: 2,
+        pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: PALETTE[1],
+        fill: true, tension: 0.35,
+        backgroundColor: (c) => {
+          const { ctx, chartArea: a } = c.chart;
+          if (!a) return "rgba(52,120,200,.12)";
+          const g = ctx.createLinearGradient(0, a.top, 0, a.bottom);
+          g.addColorStop(0, "rgba(52,120,200,.22)");
+          g.addColorStop(1, "rgba(52,120,200,0)");
+          return g;
+        },
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: X_CLEAN,
+        y: { ...Y_GRID, beginAtZero: true, ticks: { ...Y_GRID.ticks, callback: (v) => v + " ms" } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => " " + fmtMs(c.parsed.y) } },
+      },
+    },
+  };
+  chartLatency = upsert(chartLatency, "chart-latency", latencyCfg);
+  setEmpty("chart-latency", !latDays.length);
+
+  // Cost by model (doughnut)
+  const byModel = new Map();
+  for (const d of daily) {
+    const k = d.model ?? "unknown";
+    byModel.set(k, (byModel.get(k) ?? 0) + (+d.avg_est_cost || 0) * +d.requests);
+  }
+  const models = [...byModel.keys()];
+  const modelTotal = [...byModel.values()].reduce((a, b) => a + b, 0);
+  const modelsCfg = {
+    type: "doughnut",
+    data: doughnutData(models, models.map((k) => byModel.get(k))),
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "64%",
+      plugins: {
+        legend: LEGEND_BOTTOM,
+        centerText: { text: fmtCost(modelTotal), sub: "total" },
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => " " + c.label + ": " + fmtCost(c.parsed) } },
+      },
+    },
+  };
+  chartModels = upsert(chartModels, "chart-models", modelsCfg);
+  setEmpty("chart-models", !models.length);
+}
+
+function renderErrors() {
+  const section = document.getElementById("errors-section");
+  const errors = cache.errors ?? [];
+  if (!errors.length) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  document.getElementById("errors-caption").textContent = "· last " + errors.length + " (kept in memory)";
+  document.getElementById("errors-body").innerHTML = errors.map((e) => `<tr>
+    <td>${new Date(e.at).toLocaleTimeString()}</td>
+    <td><span class="tag">${esc(e.provider)}</span></td>
+    <td><span class="tag gray">${esc(e.client)}</span></td>
+    <td>${esc(e.task)}</td>
+    <td class="num">${esc(e.status)}</td>
+    <td>${esc(e.message)}</td>
+  </tr>`).join("");
+}
+
+function renderRouter() {
+  const section = document.getElementById("router-section");
+  const r = cache.router;
+  if (!r || (r.mode === "off" && !(r.recent ?? []).length)) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  document.getElementById("router-mode").textContent = "· mode: " + r.mode;
+  document.getElementById("router-body").innerHTML = (r.recent ?? []).length
+    ? r.recent.map((e) => `<tr>
+        <td>${new Date(e.at).toLocaleTimeString()}</td>
+        <td><span class="tag">${esc(e.client)}</span></td>
+        <td><span class="tag gray">${esc(e.task)}</span></td>
+        <td>${esc(e.from)}</td>
+        <td>→</td>
+        <td><b>${esc(e.to)}</b></td>
+        <td>${esc(e.decidedBy)}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="7" class="empty">no routing decisions yet · the router acts on new single-turn requests</td></tr>';
+}
+
+async function loadPills() {
+  try {
+    const c = await (await fetch("/setup/config")).json();
+    const pill = (on, label, state) => `<a class="fpill ${on ? "on" : ""}" href="/setup" title="Change in Setup">${label}: <b>${state}</b></a>`;
+    document.getElementById("feature-pills").innerHTML =
+      pill(c.autoCache, "Auto-cache", c.autoCache ? "on" : "off") +
+      pill(c.responseCache?.enabled, "Repeat cache", c.responseCache?.enabled ? "on" : "off") +
+      pill(c.autoRouter?.mode !== "off", "Router", c.autoRouter?.mode ?? "off") +
+      pill(Object.keys(c.budgets ?? {}).length > 0, "Budgets", Object.keys(c.budgets ?? {}).length || "none") +
+      pill(!!c.alerts?.webhookUrl, "Alerts", c.alerts?.webhookUrl ? "on" : "off") +
+      pill((Number(c.limits?.maxOutputTokens) || 0) > 0, "Output cap", (Number(c.limits?.maxOutputTokens) || 0) > 0 ? c.limits.maxOutputTokens : "off");
+  } catch { /* config endpoint unavailable (remote view) · hide pills */ }
+}
+
+function populateClientFilter() {
+  const sel = document.getElementById("client-filter");
+  const known = new Set([...cache.daily.map((d) => d.client), ...cache.recent.map((r) => r.client)].filter(Boolean));
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">All clients</option>' +
+    [...known].sort().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+  sel.value = [...known].includes(current) ? current : "all";
+}
+
+async function refresh() {
+  const status = document.getElementById("status");
+  try {
+    const r = await fetch("/dashboard/data");
+    const payload = await r.json();
+    if (!r.ok) throw new Error(payload.error || ("HTTP " + r.status));
+    cache = payload;
+    populateClientFilter();
+    render();
+    renderRouter();
+    renderErrors();
+    status.textContent = (liveConnected ? "● live · " : "live · ") + "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    status.textContent = "error: " + e.message;
+  }
+}
+
+document.getElementById("range").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-range]");
+  if (!btn) return;
+  state.range = btn.dataset.range;
+  document.querySelectorAll("#range button").forEach((b) => b.classList.toggle("active", b === btn));
+  render();
+});
+
+document.getElementById("client-filter").addEventListener("change", (e) => {
+  state.client = e.target.value;
+  render();
+});
+
+document.getElementById("search").addEventListener("input", (e) => {
+  state.q = e.target.value;
+  render();
+});
+
+// Request explorer: click a row to inspect the captured prompt & answer.
+function modalSection(label, text) {
+  return `<div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px">${label}</div>`
+    + `<pre style="background:#F7F5EE;border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap;word-break:break-word;margin:0;font-family:Consolas,monospace;font-size:12.5px">${text}</pre>`;
+}
+
+document.getElementById("recent-body").addEventListener("click", async (e) => {
+  const tr = e.target.closest("tr[data-rid]");
+  if (!tr || !tr.dataset.rid) return;
+  const modal = document.getElementById("modal");
+  const title = document.getElementById("modal-title");
+  const body = document.getElementById("modal-body");
+  modal.style.display = "flex";
+  title.textContent = "Request explorer";
+  body.innerHTML = '<p style="color:var(--muted)">loading…</p>';
+  try {
+    const r = await fetch("/dashboard/capture?id=" + encodeURIComponent(tr.dataset.rid));
+    const d = await r.json();
+    if (!r.ok) {
+      body.innerHTML = '<p style="color:var(--muted)">' + esc(d.error ?? "not available") + "</p>";
+      return;
+    }
+    title.textContent = esc(d.model ?? "Request") + " · " + esc(d.client ?? "");
+    body.innerHTML =
+      (d.system ? modalSection("System prompt", esc(d.system)) : "") +
+      modalSection("Prompt", esc(d.prompt || "(empty)")) +
+      modalSection("Answer", esc(d.answer || "(no text)"));
+  } catch (err) {
+    body.innerHTML = '<p style="color:var(--muted)">error: ' + esc(err.message) + "</p>";
+  }
+});
+
+document.getElementById("modal").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.style.display = "none";
+});
+
+document.getElementById("csv-btn").addEventListener("click", () => {
+  const { recent } = filtered();
+  const cols = ["id", "created_at", "client", "task_type", "model", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "est_cost", "request_id", "latency_ms"];
+  const lines = [cols.join(",")].concat(recent.map((r) =>
+    cols.map((c) => {
+      const v = r[c] ?? "";
+      return /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v;
+    }).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "token-usage.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// Test any provider through its own proxy door.
+const TEST_PROMPT = "Reply with a 5-word confirmation that the proxy works.";
+
+async function sendTestRequest(model) {
+  const headers = {
+    "content-type": "application/json",
+    "x-sixvm-client": "dashboard",
+    "x-sixvm-task": "ui-test",
+  };
+  if (model.startsWith("claude")) {
+    const r = await fetch("/v1/messages", {
+      method: "POST", headers,
+      body: JSON.stringify({ model, max_tokens: 32, messages: [{ role: "user", content: TEST_PROMPT }] }),
+    });
+    const d = await r.json();
+    return { ok: r.ok, name: "Claude", text: d.content?.[0]?.text, err: d.error?.message };
+  }
+  if (model.startsWith("gpt")) {
+    const r = await fetch("/v1/chat/completions", {
+      method: "POST", headers,
+      body: JSON.stringify({ model, max_completion_tokens: 32, messages: [{ role: "user", content: TEST_PROMPT }] }),
+    });
+    const d = await r.json();
+    return { ok: r.ok, name: "ChatGPT", text: d.choices?.[0]?.message?.content, err: d.error?.message };
+  }
+  const r = await fetch(`/v1beta/models/${model}:generateContent`, {
+    method: "POST", headers,
+    body: JSON.stringify({ contents: [{ parts: [{ text: TEST_PROMPT }] }], generationConfig: { maxOutputTokens: 200 } }),
+  });
+  const d = await r.json();
+  return { ok: r.ok, name: "Gemini", text: d.candidates?.[0]?.content?.parts?.[0]?.text, err: d.error?.message ?? d.error?.type };
+}
+
+document.getElementById("test-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("test-btn");
+  const out = document.getElementById("test-result");
+  btn.disabled = true;
+  out.textContent = "sending…";
+  try {
+    const result = await sendTestRequest(document.getElementById("test-model").value);
+    out.textContent = result.ok
+      ? result.name + ": “" + (result.text ?? "").trim() + "”"
+      : "error: " + (result.err ?? "request failed");
+    setTimeout(refresh, 1500);
+  } catch (e) {
+    out.textContent = "error: " + e.message;
+  }
+  btn.disabled = false;
+});
+
+document.getElementById("budget-edit").addEventListener("click", () => {
+  const cur = localStorage.getItem("sixvm-budget") || "";
+  const val = prompt("Monthly budget in USD (leave empty to clear):", cur);
+  if (val === null) return;
+  if (val.trim() === "") localStorage.removeItem("sixvm-budget");
+  else if (!isNaN(Number(val))) localStorage.setItem("sixvm-budget", val.trim());
+  renderBudget();
+});
+
+// Show the setup banner until key + database are configured.
+(async function checkSetup() {
+  try {
+    const s = await (await fetch("/setup/status")).json();
+    if (!s.anthropic || !s.logging) {
+      document.getElementById("setup-banner").style.display = "block";
+    }
+  } catch { /* status route unavailable · leave banner hidden */ }
+})();
+
+// Live feed: the server pings this stream whenever a request is logged, so
+// new rows appear instantly instead of waiting for the 10-second poll.
+let liveConnected = false;
+let lastLiveRefresh = 0;
+function connectLive() {
+  try {
+    const es = new EventSource("/dashboard/stream");
+    es.onopen = () => { liveConnected = true; };
+    es.onmessage = () => {
+      const now = Date.now();
+      if (now - lastLiveRefresh > 800) {
+        lastLiveRefresh = now;
+        flashNext = true;
+        refresh();
+      }
+    };
+    es.onerror = () => {
+      liveConnected = false;
+      es.close();
+      setTimeout(connectLive, 5000);
+    };
+  } catch { /* EventSource unsupported · polling still works */ }
+}
+let flashNext = false;
+connectLive();
+
+loadPills();
+refresh();
+setInterval(refresh, 10000);
+setInterval(loadPills, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "sixvm-token-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pass-through proxy for the Anthropic Messages API with token usage logging (SixVM IT Solutions)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

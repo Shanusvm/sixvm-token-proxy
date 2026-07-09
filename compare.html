@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare · SixVM Token Proxy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23D97757'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #FAF9F5; --card: #FFFFFF; --border: #E8E4D9; --ink: #26251F;
+    --muted: #7A776C; --accent: #D97757; --accent-dark: #BC5F42; --accent-soft: #F6E8E1;
+    --good: #4E7A46;
+    --shadow: 0 1px 2px rgba(38,37,31,.05), 0 4px 14px rgba(38,37,31,.04);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--ink); }
+  header {
+    background: rgba(250,249,245,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border); padding: 14px 28px;
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    color: var(--accent); font-size: 18px; background: var(--accent-soft);
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  h1 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin: 0; }
+  nav { margin-left: auto; display: flex; gap: 6px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 7px 14px; border-radius: 8px; }
+  nav a:hover { color: var(--accent-dark); background: var(--accent-soft); }
+  main { max-width: 1100px; margin: 0 auto; padding: 26px 28px 60px; }
+  .lede { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+  textarea {
+    width: 100%; min-height: 110px; padding: 14px; font-size: 14px; font-family: var(--sans);
+    border: 1px solid var(--border); border-radius: 14px; background: var(--card); color: var(--ink);
+    resize: vertical; box-shadow: var(--shadow);
+  }
+  textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 14px 0 22px; }
+  select {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 13px; color: var(--ink); font-family: var(--sans); cursor: pointer;
+  }
+  .vs { font-family: var(--serif); font-style: italic; color: var(--muted); }
+  button.primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(217,119,87,.3);
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+
+  .results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 800px) { .results { grid-template-columns: 1fr; } }
+  .result {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; box-shadow: var(--shadow); display: none;
+  }
+  .result.show { display: block; }
+  .result h2 { font-family: var(--serif); font-size: 16px; margin: 0 0 10px; }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { font-size: 12px; background: #F3F0E8; border-radius: 999px; padding: 4px 12px; color: #55524A; }
+  .stat.cost { background: var(--accent-soft); color: var(--accent-dark); font-weight: 600; }
+  .answer {
+    font-size: 13.5px; white-space: pre-wrap; word-break: break-word; line-height: 1.55;
+    background: #FCFBF7; border: 1px solid #F0EDE4; border-radius: 12px; padding: 14px;
+  }
+  .answer.err { color: #A34A40; background: #F9E9E7; border-color: #EACFCB; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark">⚖</span><h1>Compare models</h1></div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/doctor">Doctor</a>
+    <a href="/help">Help</a>
+    <a href="/setup">Setup</a>
+  </nav>
+</header>
+
+<main>
+  <p class="lede">One prompt, two models, side by side · answers, tokens, real cost, and speed. The cheapest model that answers well enough is the model that task deserves. Requests are tagged <b>compare</b> on the dashboard.</p>
+
+  <textarea id="prompt" placeholder="Type a prompt that represents a real task from your agents…">Summarize in exactly 2 sentences: why prompt caching reduces AI API costs.</textarea>
+
+  <div class="controls">
+    <select id="model-a">
+      <option value="claude-haiku-4-5">Claude · Haiku</option>
+      <option value="claude-sonnet-4-6" selected>Claude · Sonnet</option>
+      <option value="claude-opus-4-8">Claude · Opus</option>
+      <option value="gpt-4o-mini">ChatGPT · 4o-mini</option>
+      <option value="gpt-4o">ChatGPT · 4o</option>
+      <option value="gemini-2.5-flash">Gemini · Flash</option>
+      <option value="gemini-2.5-pro">Gemini · Pro</option>
+    </select>
+    <span class="vs">vs</span>
+    <select id="model-b">
+      <option value="claude-haiku-4-5" selected>Claude · Haiku</option>
+      <option value="claude-sonnet-4-6">Claude · Sonnet</option>
+      <option value="claude-opus-4-8">Claude · Opus</option>
+      <option value="gpt-4o-mini">ChatGPT · 4o-mini</option>
+      <option value="gpt-4o">ChatGPT · 4o</option>
+      <option value="gemini-2.5-flash">Gemini · Flash</option>
+      <option value="gemini-2.5-pro">Gemini · Pro</option>
+    </select>
+    <button class="primary" id="run">Run both</button>
+  </div>
+
+  <div class="results">
+    <div class="result" id="result-a"></div>
+    <div class="result" id="result-b"></div>
+  </div>
+</main>
+
+<script>
+let PRICING = {};
+fetch("/pricing").then((r) => r.json()).then((p) => { PRICING = p; }).catch(() => {});
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtCost = (v) => {
+  v = Number(v) || 0;
+  if (v === 0) return "$0.00";
+  if (v >= 0.01) return "$" + v.toFixed(4);
+  return "$" + v.toFixed(6);
+};
+
+function pricingFor(model) {
+  if (!model) return null;
+  if (PRICING[model]) return PRICING[model];
+  const k = Object.keys(PRICING).find((k) => model.startsWith(k));
+  return k ? PRICING[k] : null;
+}
+
+function cost(model, tin, tout, cr) {
+  const p = pricingFor(model);
+  if (!p) return null;
+  return (tin * p.input + tout * p.output + (cr || 0) * p.cacheRead) / 1e6;
+}
+
+async function ask(model, prompt) {
+  // x-sixvm-raw makes the proxy run the EXACT model picked — no auto-router,
+  // no cached answers — so the comparison is honest.
+  const headers = { "content-type": "application/json", "x-sixvm-client": "compare", "x-sixvm-task": "compare", "x-sixvm-raw": "1" };
+  const t0 = performance.now();
+  let text, tin = 0, tout = 0, cr = 0, err = null, actualModel = model;
+  try {
+    if (model.startsWith("claude")) {
+      const r = await fetch("/v1/messages", { method: "POST", headers, body: JSON.stringify({ model, max_tokens: 600, messages: [{ role: "user", content: prompt }] }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error?.message ?? "HTTP " + r.status);
+      text = (d.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+      tin = d.usage?.input_tokens ?? 0; tout = d.usage?.output_tokens ?? 0; cr = d.usage?.cache_read_input_tokens ?? 0;
+      actualModel = d.model ?? model;
+    } else if (model.startsWith("gpt")) {
+      const r = await fetch("/v1/chat/completions", { method: "POST", headers, body: JSON.stringify({ model, max_completion_tokens: 600, messages: [{ role: "user", content: prompt }] }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error?.message ?? "HTTP " + r.status);
+      text = d.choices?.[0]?.message?.content ?? "";
+      const cached = d.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+      tin = Math.max(0, (d.usage?.prompt_tokens ?? 0) - cached); tout = d.usage?.completion_tokens ?? 0; cr = cached;
+      actualModel = d.model ?? model;
+    } else {
+      const r = await fetch(`/v1beta/models/${model}:generateContent`, { method: "POST", headers, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 600 } }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error?.message ?? "HTTP " + r.status);
+      text = d.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      const cached = d.usageMetadata?.cachedContentTokenCount ?? 0;
+      tin = Math.max(0, (d.usageMetadata?.promptTokenCount ?? 0) - cached);
+      tout = (d.usageMetadata?.candidatesTokenCount ?? 0) + (d.usageMetadata?.thoughtsTokenCount ?? 0);
+      cr = cached;
+      actualModel = d.modelVersion ?? model;
+    }
+  } catch (e) {
+    err = e.message;
+  }
+  return { model, actualModel, text, tin, tout, cr, err, ms: Math.round(performance.now() - t0) };
+}
+
+function renderResult(el, r) {
+  el.classList.add("show");
+  if (r.err) {
+    el.innerHTML = `<h2>${esc(r.model)}</h2><div class="answer err">${esc(r.err)}</div>`;
+    return;
+  }
+  const c = cost(r.actualModel, r.tin, r.tout, r.cr);
+  el.innerHTML = `
+    <h2>${esc(r.actualModel)}</h2>
+    <div class="stats">
+      <span class="stat cost">${c == null ? "cost unknown" : fmtCost(c)}</span>
+      <span class="stat">${r.tin.toLocaleString()} in · ${r.tout.toLocaleString()} out</span>
+      <span class="stat">${(r.ms / 1000).toFixed(1)}s</span>
+    </div>
+    <div class="answer">${esc(r.text || "(no text)")}</div>`;
+}
+
+document.getElementById("run").addEventListener("click", async () => {
+  const btn = document.getElementById("run");
+  const prompt = document.getElementById("prompt").value.trim();
+  if (!prompt) return;
+  btn.disabled = true;
+  btn.textContent = "Running…";
+  const [ra, rb] = [document.getElementById("result-a"), document.getElementById("result-b")];
+  ra.classList.add("show"); rb.classList.add("show");
+  ra.innerHTML = rb.innerHTML = '<div class="answer" style="color:var(--muted);font-style:italic">thinking…</div>';
+  const [a, b] = await Promise.all([
+    ask(document.getElementById("model-a").value, prompt),
+    ask(document.getElementById("model-b").value, prompt),
+  ]);
+  renderResult(ra, a);
+  renderResult(rb, b);
+  btn.disabled = false;
+  btn.textContent = "Run both";
+});
+</script>
+</body>
+</html>

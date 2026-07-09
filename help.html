@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Help · SixVM Token Proxy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23D97757'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #FAF9F5; --card: #FFFFFF; --border: #E8E4D9; --ink: #26251F;
+    --muted: #7A776C; --accent: #D97757; --accent-dark: #BC5F42; --accent-soft: #F6E8E1;
+    --good: #4E7A46; --good-soft: #EBF1E7;
+    --shadow: 0 1px 2px rgba(38,37,31,.05), 0 4px 14px rgba(38,37,31,.04);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  header {
+    background: rgba(250,249,245,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border); padding: 14px 28px;
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    color: var(--accent); font-size: 18px; background: var(--accent-soft);
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  header h1 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin: 0; }
+  nav { margin-left: auto; display: flex; gap: 6px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 7px 14px; border-radius: 8px; }
+  nav a:hover { color: var(--accent-dark); background: var(--accent-soft); }
+  nav a.active { color: var(--accent-dark); background: var(--accent-soft); font-weight: 600; }
+
+  main { max-width: 840px; margin: 0 auto; padding: 36px 28px 80px; }
+  .hero h2 { font-family: var(--serif); font-size: 30px; margin: 0 0 10px; letter-spacing: -0.3px; }
+  .hero p { font-size: 16px; color: #45443E; }
+  .diagram {
+    background: #26251F; color: #E8E4D9; border-radius: 12px; padding: 18px 20px;
+    font-family: Consolas, monospace; font-size: 13px; overflow-x: auto; margin: 18px 0;
+  }
+  .diagram .hl { color: #E89B7D; }
+
+  section { margin-top: 44px; }
+  section h3 { font-family: var(--serif); font-size: 21px; margin: 0 0 12px; }
+  section p, section li { font-size: 14.5px; color: #3C3B34; }
+
+  .callout {
+    background: var(--accent-soft); border: 1px solid #EBD5C9; border-radius: 12px;
+    padding: 16px 18px; font-size: 14px; margin: 16px 0;
+  }
+  .callout b { color: var(--accent-dark); }
+  .callout.green { background: var(--good-soft); border-color: #D3E0CB; }
+  .callout.green b { color: var(--good); }
+
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 18px 0; }
+  ol.steps li { counter-increment: step; position: relative; padding: 0 0 22px 52px; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: -2px;
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+  }
+  ol.steps li b { display: block; font-size: 15px; margin-bottom: 3px; }
+  ol.steps li p { margin: 0; }
+
+  .codeblock { position: relative; margin: 14px 0; }
+  .codeblock pre {
+    background: #26251F; color: #E8E4D9; font-size: 13px; padding: 16px;
+    border-radius: 10px; overflow-x: auto; margin: 0; font-family: Consolas, monospace;
+  }
+  .codeblock .copy {
+    position: absolute; top: 10px; right: 10px;
+    background: #3B3A33; color: #C9C6BA; border: none; border-radius: 6px;
+    padding: 5px 12px; font-size: 12px; cursor: pointer;
+  }
+  .codeblock .copy:hover { background: var(--accent); color: #fff; }
+  .codelabel { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 0; }
+
+  table.info { width: 100%; border-collapse: collapse; font-size: 14px; margin: 14px 0; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  table.info th, table.info td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #F0EDE4; vertical-align: top; }
+  table.info th { background: #F3F0E8; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #55524A; }
+  table.info tr:last-child td { border-bottom: none; }
+
+  details {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 10px; box-shadow: var(--shadow);
+  }
+  details summary { font-size: 14.5px; font-weight: 600; cursor: pointer; }
+  details p { margin: 10px 0 2px; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 60px; padding: 22px 28px; text-align: center; font-size: 12.5px; color: var(--muted); }
+  footer a, a { color: var(--accent-dark); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark">✳</span><h1>SixVM Token Proxy</h1></div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/compare">Compare</a>
+    <a href="/doctor">Doctor</a>
+    <a href="/help" class="active">Help</a>
+    <a href="/setup">Setup</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>One proxy for all your AI · see every token, spend less on all of them.</h2>
+    <p>SixVM Token Proxy sits between your AI agents and <b>Anthropic (Claude), OpenAI (ChatGPT), and Google (Gemini)</b>. Your agents work exactly the same — every request passes through untouched — but everything gets measured, and a stack of automatic money-savers works quietly in the background.</p>
+  </div>
+
+  <div class="diagram">Your agents ──► <span class="hl">http://localhost:8787</span> ──► Claude · ChatGPT · Gemini
+                      │
+                      ├── measures every request (tokens, cost, speed)
+                      └── saves money (caching · routing · budgets · retries)</div>
+
+  <div class="callout"><b>Your API keys stay on your machine.</b> Keys live only in a local <code>.env</code> file, are never uploaded anywhere, and are only ever sent to the AI provider they belong to. Add them on the <a href="/setup">Setup page</a> — each key is verified with its provider before saving.</div>
+
+  <div class="callout green"><b>Your data stays yours — nothing is reported to anyone.</b> Usage records live in a local database file next to the proxy, or (optionally) in <b>your own free Supabase project</b> that only you control. Prompt and answer content is never stored to disk at all — the optional Request explorer keeps the last 100 in memory only, on your machine.</div>
+
+  <section id="setup">
+    <h3>Getting started (about 3 minutes)</h3>
+    <ol class="steps">
+      <li>
+        <b>Install Node.js</b>
+        <p>Version 22 or newer from <a href="https://nodejs.org" target="_blank">nodejs.org</a>. Check with <code>node --version</code>.</p>
+      </li>
+      <li>
+        <b>Download &amp; start the proxy</b>
+        <div class="codeblock"><button class="copy">Copy</button><pre>git clone https://github.com/YOUR-USERNAME/sixvm-token-proxy.git
+cd sixvm-token-proxy
+npm install
+npm start</pre></div>
+      </li>
+      <li>
+        <b>Add your API keys</b>
+        <p>Open <a href="/setup">http://localhost:8787/setup</a> and paste the keys for the AIs you use: <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic</a>, <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI</a>, and/or <a href="https://aistudio.google.com/apikey" target="_blank">Google Gemini</a>. Any one is enough; add the rest later.</p>
+      </li>
+      <li>
+        <b>Test it</b>
+        <p>Open the <a href="/dashboard">dashboard</a>, pick an AI in the dropdown, click <b>Send test</b>. The reply appears next to the button and the request lands in the table instantly. Usage is logged to a local database file automatically — nothing to configure.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="connect">
+    <h3>Connecting your agents</h3>
+    <p>Change one URL per agent. Add the two tag headers so the dashboard can tell your agents apart.</p>
+
+    <p class="codelabel">Claude · Anthropic SDK</p>
+    <div class="codeblock"><button class="copy">Copy</button><pre>const client = new Anthropic({
+  apiKey: "not-needed",              // the proxy holds the real key
+  baseURL: "http://localhost:8787",
+  defaultHeaders: {
+    "x-sixvm-client": "my-agent",    // who is calling
+    "x-sixvm-task": "summarize",     // what kind of work
+  },
+});</pre></div>
+
+    <p class="codelabel">ChatGPT · OpenAI SDK</p>
+    <div class="codeblock"><button class="copy">Copy</button><pre>const openai = new OpenAI({
+  apiKey: "not-needed",
+  baseURL: "http://localhost:8787/v1",
+  defaultHeaders: { "x-sixvm-client": "my-agent", "x-sixvm-task": "chat" },
+});</pre></div>
+
+    <p class="codelabel">Environment variables (Claude Code, many tools)</p>
+    <div class="codeblock"><button class="copy">Copy</button><pre>ANTHROPIC_BASE_URL=http://localhost:8787
+OPENAI_BASE_URL=http://localhost:8787/v1</pre></div>
+
+    <p class="codelabel">Gemini · raw endpoint</p>
+    <div class="codeblock"><button class="copy">Copy</button><pre>POST http://localhost:8787/v1beta/models/gemini-2.5-flash:generateContent</pre></div>
+
+    <p>Streaming works exactly like the real APIs, and other endpoints (<code>count_tokens</code>, <code>models</code>, …) are forwarded too.</p>
+  </section>
+
+  <section id="supabase">
+    <h3>Optional: your own cloud database (Supabase)</h3>
+    <p>By default the proxy logs usage to a local file — zero setup. If you'd like your usage data in the cloud (it survives reinstalls, and you can query it from anywhere), connect <b>your own free Supabase project</b>. The data goes only to your project; nobody else can see it.</p>
+    <ol class="steps">
+      <li>
+        <b>Create a free Supabase project</b>
+        <p>Sign up at <a href="https://supabase.com" target="_blank">supabase.com</a> → <b>New project</b> → any name, free plan. Wait a minute while it provisions.</p>
+      </li>
+      <li>
+        <b>Copy your two values</b>
+        <p>In your project: <b>Project Settings → API keys</b>. Copy the <b>Project URL</b> (looks like <code>https://xxxxx.supabase.co</code>) and the <b>service_role</b> secret key.</p>
+      </li>
+      <li>
+        <b>Paste them into Setup</b>
+        <p>Open <a href="/setup">Setup → section 3 · Your usage database</a>, paste both values, click <b>Test &amp; Save</b>. The connection is verified immediately.</p>
+      </li>
+      <li>
+        <b>Run the table SQL once</b>
+        <p>Setup will show you a block of SQL. Copy it, go to Supabase's <b>SQL Editor</b> (left menu → New query), paste, click <b>Run</b>. Back in Setup, click <b>Test &amp; Save</b> once more — done. New usage now flows to your Supabase.</p>
+      </li>
+    </ol>
+    <p class="hint" style="color:var(--muted);font-size:13px">Note: switching to Supabase starts a fresh history there — rows already in your local file stay in the local file.</p>
+  </section>
+
+  <section id="pages">
+    <h3>The pages</h3>
+    <table class="info">
+      <tr><th>Page</th><th>What it does</th></tr>
+      <tr><td><a href="/dashboard">Dashboard</a></td><td>Live overview: cost, savings, tokens, 6 charts, request table (click a row to inspect it), router activity, errors, budget with forecast, filters + search, CSV export. Updates instantly when requests happen.</td></tr>
+      <tr><td><a href="/compare">Compare</a></td><td>One prompt, two models side by side — even across providers — with answers, real cost, and speed. The fastest way to decide which model a task deserves.</td></tr>
+      <tr><td><a href="/doctor">Doctor</a></td><td>Examines your recent traffic and points at money leaks: uncached big prompts, premium models on small tasks, wasted cache writes, and what's already working.</td></tr>
+      <tr><td><a href="/setup">Setup</a></td><td>API keys and every feature switch: caching, budgets, alerts, routing, auto-router, reliability, request explorer.</td></tr>
+    </table>
+  </section>
+
+  <section id="saving">
+    <h3>How it saves money</h3>
+    <table class="info">
+      <tr><th>Feature</th><th>What it does</th><th>Default</th></tr>
+      <tr><td><b>Auto prompt caching</b></td><td>Adds Claude's cache marker to big system prompts and conversation history · repeated content bills at ~10% of normal price. No agent changes needed.</td><td>On</td></tr>
+      <tr><td><b>Repeat-answer cache</b></td><td>The exact same request asked again is answered from memory · zero tokens. Rows show an ⚡ free tag.</td><td>Setup toggle</td></tr>
+      <tr><td><b>Duplicate merging</b></td><td>Two agents asking the identical question at the same moment share one upstream call.</td><td>With repeat cache</td></tr>
+      <tr><td><b>Auto-router</b></td><td>Judges each request's difficulty and picks the cheapest capable model (simple → Haiku, medium → Sonnet, hard → as requested). Never upgrades unless allowed, never switches mid-conversation, every decision logged.</td><td>Setup: off / rules / smart</td></tr>
+      <tr><td><b>Manual routing</b></td><td>Pin task tags to models (<code>summarize: claude-haiku-4-5</code>) · always wins over the auto-router.</td><td>Setup</td></tr>
+      <tr><td><b>Output guards</b></td><td>Hard cap on answer length, and per-task effort levels (output tokens cost 5× input).</td><td>Setup</td></tr>
+      <tr><td><b>Budgets</b></td><td>Monthly USD cap per client · over the cap, requests get a clear "budget exceeded" error instead of spending.</td><td>Setup</td></tr>
+      <tr><td><b>Alerts + weekly report</b></td><td>Discord/Slack message when daily spend crosses your line, when a client hits its budget, and a 7-day summary every Monday.</td><td>Setup (needs webhook)</td></tr>
+      <tr><td><b>Smart retries + failover</b></td><td>Transient provider failures (rate limit, overloaded) are retried automatically; optionally a backup model on another provider answers when the primary stays down.</td><td>Retries on · failover Setup</td></tr>
+    </table>
+    <p>The dashboard's <b>Saved</b> card and the <b>Without proxy</b> card show exactly what this machinery is worth in dollars.</p>
+  </section>
+
+  <section id="faq">
+    <h3>Frequently asked questions</h3>
+    <details>
+      <summary>Is my API key shared with anyone?</summary>
+      <p>No. Keys live in a local <code>.env</code> file, excluded from Git, never transmitted to SixVM or anyone else — only to the AI provider each key belongs to, exactly as your agents already did.</p>
+    </details>
+    <details>
+      <summary>Does SixVM (or anyone) see my usage?</summary>
+      <p>No. Nothing is reported anywhere. Usage records stay in your local database file, or in your own Supabase project if you connected one — a database only you control.</p>
+    </details>
+    <details>
+      <summary>Whose AI account pays for requests?</summary>
+      <p>Yours — the accounts behind the keys you enter at Setup. The proxy adds no fees.</p>
+    </details>
+    <details>
+      <summary>Does the proxy slow my agents down?</summary>
+      <p>Only a few milliseconds — and often it makes them faster: cached repeat answers return in ~100&nbsp;ms instead of seconds, and retries hide provider hiccups.</p>
+    </details>
+    <details>
+      <summary>Where is my usage data stored?</summary>
+      <p>By default in a local database file (<code>data/usage.db</code>) on your machine, automatically. Optionally in your own free Supabase project — see "Optional: your own cloud database" above. Either way, if the database is ever unavailable, requests still pass through fine.</p>
+    </details>
+    <details>
+      <summary>Can I use it with Claude Code?</summary>
+      <p>Yes — set <code>ANTHROPIC_BASE_URL=http://localhost:8787</code>. One caveat: if your Claude Code runs on a Pro/Max subscription, routing through the proxy bills usage to your API key instead, so most people track only their agents.</p>
+    </details>
+    <details>
+      <summary>Why did a request use a different model than my agent asked for?</summary>
+      <p>Either a routing rule, the auto-router (downgrading a simple task to a cheaper model), or failover (the requested provider was down). Every switch is listed in the dashboard's "Auto-router activity" table with the reason. Turn any of these off in Setup.</p>
+    </details>
+    <details>
+      <summary>Can I run it on a server instead of my PC?</summary>
+      <p>Yes, any machine with Node.js 22+. But if the server is reachable from the internet, put the proxy behind a firewall or VPN — anyone who can reach it can spend your AI credits. Setup changes are only accepted from the machine it runs on.</p>
+    </details>
+    <details>
+      <summary>The est. cost numbers look wrong</summary>
+      <p>Per-token prices live in the <code>PRICING</code> table at the top of <code>server.js</code>. Prices change — check the providers' pricing pages and update the numbers there.</p>
+    </details>
+  </section>
+</main>
+
+<footer>
+  ✳ SixVM Token Proxy · MIT license · built by SixVM IT Solutions ·
+  <a href="/dashboard">Dashboard</a> · <a href="/compare">Compare</a> · <a href="/doctor">Doctor</a> · <a href="/setup">Setup</a>
+</footer>
+
+<script>
+document.querySelectorAll(".codeblock .copy").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(btn.nextElementSibling.textContent);
+    btn.textContent = "Copied ✓";
+    setTimeout(() => (btn.textContent = "Copy"), 2000);
+  });
+});
+</script>
+</body>
+</html>

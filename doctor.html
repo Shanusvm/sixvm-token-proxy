@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Doctor · SixVM Token Proxy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23D97757'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #FAF9F5; --card: #FFFFFF; --border: #E8E4D9; --ink: #26251F;
+    --muted: #7A776C; --accent: #D97757; --accent-dark: #BC5F42; --accent-soft: #F6E8E1;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--sans); margin: 0; background: var(--bg); color: var(--ink); line-height: 1.5; }
+  header {
+    background: var(--bg); border-bottom: 1px solid var(--border); padding: 16px 28px;
+    display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 5;
+  }
+  .logo { display: flex; align-items: baseline; gap: 10px; }
+  .logo .mark { color: var(--accent); font-size: 22px; }
+  header h1 { font-family: var(--serif); font-size: 19px; font-weight: 600; margin: 0; }
+  nav { margin-left: auto; display: flex; gap: 6px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 7px 14px; border-radius: 8px; }
+  nav a:hover { color: var(--accent-dark); background: var(--accent-soft); }
+  nav a.active { color: var(--accent-dark); background: var(--accent-soft); font-weight: 600; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 32px 28px 80px; }
+  .lede { color: var(--muted); font-size: 14px; margin: 4px 0 24px; }
+  .lede b { color: var(--ink); }
+
+  .finding {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 12px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .finding .icon { font-size: 20px; line-height: 1.4; }
+  .finding h3 { font-family: var(--serif); font-size: 16px; margin: 0 0 4px; }
+  .finding p { font-size: 13.5px; color: #4A4942; margin: 0; }
+  .finding .save {
+    display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600;
+    background: #EBF1E7; color: #4E7A46; border-radius: 999px; padding: 3px 10px;
+  }
+  .finding.warn { border-left: 4px solid #C97B4A; }
+  .finding.info { border-left: 4px solid #B0A36E; }
+  .finding.good { border-left: 4px solid #7FA070; }
+  .empty { color: var(--muted); font-size: 14px; padding: 30px 0; text-align: center; }
+  button.ghost {
+    background: transparent; color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent-dark); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark">✳</span><h1>Token Doctor</h1></div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/doctor" class="active">Doctor</a>
+    <a href="/help">Help</a>
+    <a href="/setup">Setup</a>
+  </nav>
+</header>
+
+<main>
+  <p class="lede">The doctor examines your <b>recent traffic</b> (last <span id="sample">…</span> requests) and points at money leaks · and at what's already working. <button class="ghost" id="re-run" style="margin-left:8px">Re-examine</button></p>
+  <div id="findings"><p class="empty">examining…</p></div>
+</main>
+
+<script>
+const ICONS = { warn: "🩺", info: "💡", good: "✅" };
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function run() {
+  const box = document.getElementById("findings");
+  box.innerHTML = '<p class="empty">examining…</p>';
+  try {
+    const r = await fetch("/doctor/data");
+    const payload = await r.json();
+    if (!r.ok) throw new Error(payload.error || "HTTP " + r.status);
+    document.getElementById("sample").textContent = payload.sampleSize;
+    box.innerHTML = payload.findings.map((f) => {
+      const sev = ["warn", "info", "good"].includes(f.severity) ? f.severity : "info";
+      return `
+      <div class="finding ${sev}">
+        <div class="icon">${ICONS[sev] ?? "•"}</div>
+        <div>
+          <h3>${esc(f.title)}</h3>
+          <p>${esc(f.detail)}</p>
+          ${f.saveUsd ? `<span class="save">potential save ≈ $${Number(f.saveUsd).toFixed(4)} on recent traffic</span>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    box.innerHTML = '<p class="empty">error: ' + e.message + "</p>";
+  }
+}
+
+document.getElementById("re-run").addEventListener("click", run);
+run();
+</script>
+</body>
+</html>

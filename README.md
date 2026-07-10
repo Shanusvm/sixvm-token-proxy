@@ -26,6 +26,7 @@ Prefer to run from source instead? See [Quick start](#quick-start) below.
 
 - **Drop-in** — same request/response shape as the Anthropic Messages API; streaming (SSE) passes straight through; all other `/v1/*` endpoints (`count_tokens`, `models`, …) are forwarded too, so SDKs pointed at the proxy via `ANTHROPIC_BASE_URL` just work
 - **Per-agent tracking** — tag each caller with two headers (`x-sixvm-client`, `x-sixvm-task`); the proxy strips them before forwarding
+- **🛡 Data Shield** — scans every request for sensitive data (credit cards, SSNs, emails, API keys, phone numbers) before it reaches the provider, and masks or blocks it. Stops staff and agents leaking private data to an AI. Credit cards are checksum-validated to avoid false alarms; works on all three providers
 - **Automatic prompt caching** — large system prompts *and* long conversation histories get Anthropic's `cache_control` marker added automatically, so repeated content bills at ~10% of the normal price (toggle in settings)
 - **Repeat-answer cache + in-flight dedup** — byte-identical repeat requests are answered locally, and identical *concurrent* requests share one upstream call — zero extra tokens either way
 - **Smart model routing** — send tagged tasks to a cheaper model (e.g. `summarize: claude-haiku-4-5`) with one rule per line

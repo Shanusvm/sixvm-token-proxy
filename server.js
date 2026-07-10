@@ -103,6 +103,101 @@ function recordError(entry) {
   if (errorsLog.length > 100) errorsLog.pop();
 }
 
+// ---------------------------------------------------------------------------
+// Data Shield: scans requests for sensitive data (cards, SSNs, emails, API
+// keys, phone numbers) before they reach the AI provider, and either masks or
+// blocks them. Detection is regex-based; credit cards are Luhn-verified to cut
+// false positives. Nothing sensitive is ever logged — only the type + count.
+// ---------------------------------------------------------------------------
+function luhnValid(s) {
+  const digits = s.replace(/\D/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0, alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = +digits[i];
+    if (alt) { n *= 2; if (n > 9) n -= 9; }
+    sum += n; alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+const DETECTORS = [
+  { key: "credit_card", label: "credit card", placeholder: "[CARD REDACTED]",
+    regex: () => /\b(?:\d[ -]?){12,18}\d\b/g, validate: luhnValid },
+  { key: "ssn", label: "SSN", placeholder: "[SSN REDACTED]",
+    regex: () => /\b\d{3}-\d{2}-\d{4}\b/g },
+  { key: "email", label: "email", placeholder: "[EMAIL REDACTED]",
+    regex: () => /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
+  { key: "api_key", label: "API key", placeholder: "[KEY REDACTED]",
+    regex: () => /\b(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|ghp_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16}|sb_secret_[A-Za-z0-9_-]{10,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g },
+  { key: "phone", label: "phone", placeholder: "[PHONE REDACTED]",
+    regex: () => /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g },
+];
+const DETECTOR_LABELS = Object.fromEntries(DETECTORS.map((d) => [d.key, d.label]));
+
+const shieldLog = [];                          // recent catches, newest first
+const shieldStats = { total: 0, byType: {} };  // running totals since start
+
+function recordShield(entry) {
+  shieldStats.total += 1;
+  for (const h of entry.found) shieldStats.byType[h.key] = (shieldStats.byType[h.key] ?? 0) + h.count;
+  shieldLog.unshift({ at: new Date().toISOString(), ...entry });
+  if (shieldLog.length > 100) shieldLog.pop();
+}
+
+// Recursively transform every string in the request body.
+function walkStrings(value, fn) {
+  if (typeof value === "string") return fn(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) value[i] = walkStrings(value[i], fn);
+    return value;
+  }
+  if (value && typeof value === "object") {
+    for (const k of Object.keys(value)) value[k] = walkStrings(value[k], fn);
+    return value;
+  }
+  return value;
+}
+
+// Scans (and, in mask mode, rewrites) the body in place. Returns the list of
+// {key, count} found, or null if nothing matched / the shield is off.
+function applyDataShield(body) {
+  const ds = cfg.dataShield;
+  if (!ds?.enabled) return null;
+  const counts = {};
+  const mask = ds.mode === "mask";
+  walkStrings(body, (text) => {
+    let out = text;
+    for (const d of DETECTORS) {
+      if (!ds.detectors?.[d.key]) continue;
+      out = out.replace(d.regex(), (m) => {
+        if (d.validate && !d.validate(m)) return m;
+        counts[d.key] = (counts[d.key] ?? 0) + 1;
+        return mask ? d.placeholder : m;
+      });
+    }
+    return out;
+  });
+  const found = Object.entries(counts).map(([key, count]) => ({ key, count }));
+  return found.length ? found : null;
+}
+
+// Runs the shield for a request. Returns { blocked, hits }. In mask mode the
+// body is already cleaned in place; in block mode nothing was changed.
+function runShield(reqBody, client, taskType, provider) {
+  const hits = applyDataShield(reqBody);
+  if (!hits) return { blocked: false };
+  const blocked = cfg.dataShield.mode === "block";
+  recordShield({ client, task: taskType, provider, mode: cfg.dataShield.mode, found: hits });
+  broadcastLive();
+  return { blocked, hits };
+}
+
+function shieldBlockMessage(hits) {
+  const labels = hits.map((h) => DETECTOR_LABELS[h.key] ?? h.key).join(", ");
+  return `Blocked by Data Shield: this request contains sensitive data (${labels}). Remove it, or switch Data Shield to mask mode on the proxy's /setup page.`;
+}
+
 async function logUsage({ data, client, taskType, latencyMs, cacheHit = false, provider = "anthropic" }) {
   const usage = data.usage ?? {};
   // A repeat-cache hit spends nothing; tokens are logged so the dashboard's
@@ -709,6 +804,16 @@ app.post("/v1/messages", async (req, res) => {
   const taskType = req.get("x-sixvm-task") ?? null;
   const isStream = req.body?.stream === true;
 
+  // Data Shield runs before anything else — unconditionally on every request —
+  // so sensitive data is caught even before the key/routing/cache stages.
+  const shield = runShield(req.body, client, taskType, "anthropic");
+  if (shield.blocked) {
+    return res.status(400).json({
+      type: "error",
+      error: { type: "data_shield_blocked", message: shieldBlockMessage(shield.hits) },
+    });
+  }
+
   if (isPlaceholder(process.env.ANTHROPIC_API_KEY)) {
     return res.status(500).json({
       type: "error",
@@ -966,6 +1071,11 @@ app.post("/v1/chat/completions", async (req, res) => {
   const taskType = req.get("x-sixvm-task") ?? null;
   const isStream = req.body?.stream === true;
 
+  const shield = runShield(req.body, client, taskType, "openai");
+  if (shield.blocked) {
+    return res.status(400).json({ error: { type: "data_shield_blocked", message: shieldBlockMessage(shield.hits) } });
+  }
+
   if (isPlaceholder(process.env.OPENAI_API_KEY)) {
     return res.status(500).json({
       error: { type: "proxy_config_error", message: "OPENAI_API_KEY is not set — open /setup in a browser" },
@@ -1058,6 +1168,11 @@ app.post(/^\/(v1beta|v1)\/models\/[^/]+:(generateContent|streamGenerateContent)$
   const taskType = req.get("x-sixvm-task") ?? null;
   const isStream = req.path.includes(":streamGenerateContent");
   const modelFromPath = req.path.match(/models\/([^:]+):/)?.[1] ?? null;
+
+  const shield = runShield(req.body, client, taskType, "gemini");
+  if (shield.blocked) {
+    return res.status(400).json({ error: { type: "data_shield_blocked", message: shieldBlockMessage(shield.hits) } });
+  }
 
   if (isPlaceholder(process.env.GEMINI_API_KEY)) {
     return res.status(500).json({
@@ -1170,6 +1285,12 @@ app.get("/dashboard/data", async (_req, res) => {
       pricing: PRICING,
       router: { mode: cfg.autoRouter?.mode ?? "off", recent: routerLog.slice(0, 50) },
       errors: errorsLog.slice(0, 50),
+      shield: {
+        enabled: Boolean(cfg.dataShield?.enabled),
+        mode: cfg.dataShield?.mode ?? "mask",
+        stats: shieldStats,
+        recent: shieldLog.slice(0, 50),
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message ?? String(err) });
@@ -1395,6 +1516,15 @@ app.post("/setup/config", localOnly, (req, res) => {
     const rt = Number(b.reliability.retries);
     if (!Number.isNaN(rt)) cfg.reliability.retries = Math.max(0, Math.min(5, Math.floor(rt)));
     if (typeof b.reliability.failoverModel === "string") cfg.reliability.failoverModel = b.reliability.failoverModel.trim();
+  }
+  if (b.dataShield && typeof b.dataShield === "object") {
+    if (typeof b.dataShield.enabled === "boolean") cfg.dataShield.enabled = b.dataShield.enabled;
+    if (["mask", "block"].includes(b.dataShield.mode)) cfg.dataShield.mode = b.dataShield.mode;
+    if (b.dataShield.detectors && typeof b.dataShield.detectors === "object") {
+      for (const d of DETECTORS) {
+        if (typeof b.dataShield.detectors[d.key] === "boolean") cfg.dataShield.detectors[d.key] = b.dataShield.detectors[d.key];
+      }
+    }
   }
   saveConfig(cfg);
   res.json({ ok: true, config: cfg });

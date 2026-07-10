@@ -144,6 +144,28 @@ group by 1, 2, 3;</pre>
   </div>
 
   <div class="step">
+    <h2>🛡 Data Shield <span class="optional">(privacy · scans requests for sensitive data)</span></h2>
+    <p class="hint">Before any request reaches Claude, ChatGPT, or Gemini, Data Shield scans it for sensitive information. This stops staff or agents from accidentally sending private data to an AI provider. Nothing sensitive is ever logged · only the type and count of what was caught.</p>
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="shieldEnabled" style="width:auto"> Turn on Data Shield
+    </label>
+    <label>When sensitive data is found</label>
+    <select id="shieldMode" style="width:100%;padding:10px 12px;font-size:14px;font-family:var(--sans);border:1px solid var(--border);border-radius:8px;background:#FDFDFB;color:var(--ink)">
+      <option value="mask">Mask it · replace with [REDACTED] and let the request through</option>
+      <option value="block">Block it · reject the request with a clear error</option>
+    </select>
+    <label>What to protect</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="det-credit_card" style="width:auto"> Credit card numbers</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="det-ssn" style="width:auto"> Social security numbers</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="det-email" style="width:auto"> Email addresses</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="det-api_key" style="width:auto"> API keys &amp; secrets</label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="det-phone" style="width:auto"> Phone numbers</label>
+    </div>
+    <p class="hint">Tip: phone-number detection is stricter and can catch ordinary numbers, so it is off by default. Credit cards are validated with a checksum to avoid false alarms.</p>
+  </div>
+
+  <div class="step">
     <h2>4 · Optimizations &amp; limits <span class="optional">(applies instantly, no restart)</span></h2>
     <p class="hint">Automatic money-savers and safety limits. Stored locally in <code>config.json</code>.</p>
 
@@ -289,6 +311,11 @@ async function loadCfg() {
     document.getElementById("relFailover").value = c.reliability?.failoverModel ?? "";
     document.getElementById("weeklyReport").checked = c.alerts?.weeklyReport !== false;
     document.getElementById("captureEnabled").checked = !!c.capture?.enabled;
+    document.getElementById("shieldEnabled").checked = !!c.dataShield?.enabled;
+    document.getElementById("shieldMode").value = c.dataShield?.mode ?? "mask";
+    for (const k of ["credit_card", "ssn", "email", "api_key", "phone"]) {
+      document.getElementById("det-" + k).checked = !!c.dataShield?.detectors?.[k];
+    }
   } catch { /* config endpoint unavailable · leave form blank */ }
 }
 
@@ -341,6 +368,17 @@ function collectCfg() {
     reliability: {
       retries: Number(document.getElementById("relRetries").value) || 0,
       failoverModel: document.getElementById("relFailover").value,
+    },
+    dataShield: {
+      enabled: document.getElementById("shieldEnabled").checked,
+      mode: document.getElementById("shieldMode").value,
+      detectors: {
+        credit_card: document.getElementById("det-credit_card").checked,
+        ssn: document.getElementById("det-ssn").checked,
+        email: document.getElementById("det-email").checked,
+        api_key: document.getElementById("det-api_key").checked,
+        phone: document.getElementById("det-phone").checked,
+      },
     },
   };
 }

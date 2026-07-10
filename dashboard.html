@@ -210,6 +210,7 @@
     <div class="card"><div class="label">Cache hit rate</div><div class="value" id="t-hitrate"><span class="skel"></span></div><div class="sub">prompt tokens from cache</div></div>
     <div class="card good"><div class="label">Free answers</div><div class="value" id="t-free"><span class="skel"></span></div><div class="sub">repeat cache · $0 each</div></div>
     <div class="card"><div class="label">Without proxy</div><div class="value" id="t-baseline"><span class="skel"></span></div><div class="sub">every token at full price</div></div>
+    <div class="card good"><div class="label">🛡 Protected</div><div class="value" id="t-shield">0</div><div class="sub" id="t-shield-sub">sensitive items caught</div></div>
     <div class="card"><div class="label">Monthly budget <span id="budget-edit" style="cursor:pointer" title="Set monthly budget">✎</span></div><div class="value" id="t-budget"><span class="skel"></span></div><div class="sub" id="t-budget-sub">click ✎ to set</div></div>
   </div>
 
@@ -254,6 +255,18 @@
           <th>Time</th><th>Client</th><th>Task</th><th>Requested</th><th></th><th>Routed to</th><th>Decided by</th>
         </tr></thead>
         <tbody id="router-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="shield-section" style="display:none">
+    <h2>🛡 Data Shield activity <span class="caption" id="shield-caption"></span></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Provider</th><th>Client</th><th>Task</th><th>Action</th><th>Caught</th>
+        </tr></thead>
+        <tbody id="shield-body"></tbody>
       </table>
     </div>
   </div>
@@ -750,6 +763,36 @@ function renderCharts(daily, recent) {
   setEmpty("chart-models", !models.length);
 }
 
+const DET_LABELS = { credit_card: "credit card", ssn: "SSN", email: "email", api_key: "API key", phone: "phone" };
+
+function renderShield() {
+  const s = cache.shield;
+  const card = document.getElementById("t-shield");
+  const sub = document.getElementById("t-shield-sub");
+  card.textContent = fmt(s?.stats?.total ?? 0);
+  sub.textContent = s?.enabled ? (s.mode === "block" ? "blocking sensitive data" : "masking sensitive data") : "turn on in Setup";
+
+  const section = document.getElementById("shield-section");
+  const recent = s?.recent ?? [];
+  if (!recent.length) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  document.getElementById("shield-caption").textContent = "· " + fmt(s.stats.total) + " caught since start";
+  document.getElementById("shield-body").innerHTML = recent.map((e) => {
+    const caught = (e.found ?? []).map((h) => (DET_LABELS[h.key] ?? h.key) + " ×" + h.count).join(", ");
+    const action = e.mode === "block"
+      ? '<span class="tag" style="background:#F9E9E7;color:#A34A40">blocked</span>'
+      : '<span class="tag" style="background:#EBF1E7;color:#4E7A46">masked</span>';
+    return `<tr>
+      <td>${new Date(e.at).toLocaleTimeString()}</td>
+      <td><span class="tag">${esc(e.provider)}</span></td>
+      <td><span class="tag gray">${esc(e.client)}</span></td>
+      <td>${esc(e.task)}</td>
+      <td>${action}</td>
+      <td>${esc(caught)}</td>
+    </tr>`;
+  }).join("");
+}
+
 function renderErrors() {
   const section = document.getElementById("errors-section");
   const errors = cache.errors ?? [];
@@ -793,6 +836,7 @@ async function loadPills() {
       pill(c.autoCache, "Auto-cache", c.autoCache ? "on" : "off") +
       pill(c.responseCache?.enabled, "Repeat cache", c.responseCache?.enabled ? "on" : "off") +
       pill(c.autoRouter?.mode !== "off", "Router", c.autoRouter?.mode ?? "off") +
+      pill(!!c.dataShield?.enabled, "🛡 Data Shield", c.dataShield?.enabled ? c.dataShield.mode : "off") +
       pill(Object.keys(c.budgets ?? {}).length > 0, "Budgets", Object.keys(c.budgets ?? {}).length || "none") +
       pill(!!c.alerts?.webhookUrl, "Alerts", c.alerts?.webhookUrl ? "on" : "off") +
       pill((Number(c.limits?.maxOutputTokens) || 0) > 0, "Output cap", (Number(c.limits?.maxOutputTokens) || 0) > 0 ? c.limits.maxOutputTokens : "off");
@@ -818,6 +862,7 @@ async function refresh() {
     populateClientFilter();
     render();
     renderRouter();
+    renderShield();
     renderErrors();
     status.textContent = (liveConnected ? "● live · " : "live · ") + "updated " + new Date().toLocaleTimeString();
   } catch (e) {

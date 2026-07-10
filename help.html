@@ -225,6 +225,7 @@ OPENAI_BASE_URL=http://localhost:8787/v1</pre></div>
       <tr><td><b>Budgets</b></td><td>Monthly USD cap per client · over the cap, requests get a clear "budget exceeded" error instead of spending.</td><td>Setup</td></tr>
       <tr><td><b>Alerts + weekly report</b></td><td>Discord/Slack message when daily spend crosses your line, when a client hits its budget, and a 7-day summary every Monday.</td><td>Setup (needs webhook)</td></tr>
       <tr><td><b>Smart retries + failover</b></td><td>Transient provider failures (rate limit, overloaded) are retried automatically; optionally a backup model on another provider answers when the primary stays down.</td><td>Retries on · failover Setup</td></tr>
+      <tr><td><b>🛡 Data Shield</b></td><td>Scans every request for sensitive data (credit cards, SSNs, emails, API keys, phone numbers) before it reaches the AI provider, and either masks it with placeholders or blocks the request. Stops staff and agents from leaking private data to an AI. Works on all three providers.</td><td>Setup (off by default)</td></tr>
     </table>
     <p>The dashboard's <b>Saved</b> card and the <b>Without proxy</b> card show exactly what this machinery is worth in dollars.</p>
   </section>

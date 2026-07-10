@@ -38,6 +38,14 @@ export const DEFAULTS = {
   // failoverModel: if set (e.g. "gpt-4o-mini" or "gemini-2.5-flash"), text-only
   // requests that still fail after retries are answered by that model instead.
   reliability: { retries: 2, failoverModel: "" },
+  // Data Shield: scans every request for sensitive data before it reaches the
+  // AI provider. mode "mask" replaces it with placeholders, "block" rejects the
+  // request. Each detector can be turned on/off.
+  dataShield: {
+    enabled: false,
+    mode: "mask", // "mask" | "block"
+    detectors: { credit_card: true, ssn: true, email: true, api_key: true, phone: false },
+  },
 };
 
 function merge(base, extra) {
